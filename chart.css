@@ -18,12 +18,18 @@ body {
   display: inline-block;
 }
 
-.chart-legend {
-  margin: 2em 0;
+.chart canvas {
+  transition: opacity .5s;
 }
 
-input {
-  margin: 0.5em;
+.chart canvas.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.chart-legend {
+  margin: 2em 0;
 }
 
 .checkbox-round {
@@ -59,7 +65,7 @@ input {
   margin: 0.2em 0 0 0.5em;
 }
 
-label {
+.checkbox-round-label {
   cursor: pointer;
   border-radius: 2em;
   vertical-align: middle;

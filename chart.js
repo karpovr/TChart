@@ -12,11 +12,11 @@ function Chart(data, container) {
   canvas.width = 350;
   canvas.height = 500;
   container.appendChild(canvas);
-  var context = canvas.getContext("2d");
+  var ctx = canvas.getContext("2d");
 
   this.container = container;
   this.canvas = canvas;
-  this.context = context;
+  this.ctx = ctx;
   this.data = data;
 
   var settings = {};
@@ -54,7 +54,7 @@ function Chart(data, container) {
 Chart.prototype.drawChart = function () {
   var self = this;
   this.canvas.style.opacity = 0;
-
+//  var overlay = document.createElement("canvas");
   setTimeout(function () {
     self.clear(self.settings.preview);
     self.renderView(self.settings.preview, 1, self.settings.total);
@@ -85,7 +85,7 @@ Chart.prototype.drawCheckboxes = function () {
     var name = document.createTextNode(checkbox.name);
     label.appendChild(checkbox);
     label.appendChild(name);
-    label.className = "ripple";
+    label.className = "checkbox-round-label";
     legend.appendChild(label);
     checkbox.addEventListener("change", function (e) {
       if (e.target.checked) {
@@ -140,13 +140,13 @@ Chart.prototype.getExtremes = function (begin, end) {
 };
 
 Chart.prototype.clear = function () {
-  var context = this.context;
-  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  var ctx = this.ctx;
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 };
 
 Chart.prototype.renderView = function (view, begin, end) {
 
-  var context = this.context;
+  var ctx = this.ctx;
   var extremes = this.getExtremes(begin, end);
   var xRatio = view.width / extremes.xDelta;
   var yRatio = view.height / extremes.yDelta;
@@ -154,8 +154,8 @@ Chart.prototype.renderView = function (view, begin, end) {
   var yOffset = extremes.maxY * yRatio + view.y1;
   var xStep = Math.floor( (end - begin) / view.width ) || 1;
 
-  context.save();
-  context.lineWidth = view.lineWidth;
+  ctx.save();
+  ctx.lineWidth = view.lineWidth;
 
   var i, j, column_key, column, x0, y0, x, y;
   for (i = 0, column; (column = this.data.columns[i]); i++) {
@@ -163,27 +163,27 @@ Chart.prototype.renderView = function (view, begin, end) {
     if (column_key === "x" || this.settings.displayed.indexOf(column_key) < 0) {
       continue;
     }
-    context.strokeStyle = this.data.colors[column_key];
-    context.save();
-    context.setTransform(xRatio, 0, 0, -yRatio, xOffset, yOffset);
+    ctx.strokeStyle = this.data.colors[column_key];
+    ctx.save();
+    ctx.setTransform(xRatio, 0, 0, -yRatio, xOffset, yOffset);
     x0 = this.data.columns[0][begin];
     y0 = column[begin];
-    context.beginPath();
-    context.moveTo(x0, y0);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
     for (j = begin; j <= end; j += xStep) {
       x = this.data.columns[0][j];
       y = column[j];
-      context.lineTo(x, y);
+      ctx.lineTo(x, y);
     }
-    context.restore();
-    context.stroke();
+    ctx.restore();
+    ctx.stroke();
   }
-  context.restore();
+  ctx.restore();
 };
 
 Chart.prototype.drawLabels = function (view, begin, end) {
 
-  var context = this.context;
+  var ctx = this.ctx;
   var extremes = this.getExtremes(begin, end);
   var xRatio = view.width / extremes.xDelta;
   var yRatio = view.height / extremes.yDelta;
@@ -191,36 +191,36 @@ Chart.prototype.drawLabels = function (view, begin, end) {
   var yOffset = extremes.maxY * yRatio + view.y1;
 
   // Draw labels
-  context.save();
-  context.font = "12px sans-serif";
-  context.textBaseline = "bottom";
-  context.strokeStyle = "#eee";
-  context.fillStyle = "#aaa";
-  context.lineWidth = 1;
+  ctx.save();
+  ctx.font = "12px sans-serif";
+  ctx.textBaseline = "bottom";
+  ctx.strokeStyle = "#eee";
+  ctx.fillStyle = "#aaa";
+  ctx.lineWidth = 1;
   var yStep = Math.round(extremes.yDelta / view.labels);
   var power = Math.abs(yStep).toString().length - 1;
   yStep = Math.round( yStep / Math.pow(10, power) ) * Math.pow(10, power);
   var y = Math.round(extremes.minY / yStep) * yStep;
   while ( y < extremes.maxY) {
-    context.save();
-    context.setTransform(xRatio, 0, 0, -yRatio, xOffset, yOffset);
-    context.beginPath();
+    ctx.save();
+    ctx.setTransform(xRatio, 0, 0, -yRatio, xOffset, yOffset);
+    ctx.beginPath();
     var x0 = extremes.minX;
     var x1 = extremes.maxX;
-    context.moveTo(x0, y);
-    context.lineTo(x1, y);
-    context.restore();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.restore();
     if (y === 0) {
-      context.strokeStyle = "#ccc";
+      ctx.strokeStyle = "#ccc";
     } else {
-      context.strokeStyle = "#eee";
+      ctx.strokeStyle = "#eee";
     }
-    context.stroke();
+    ctx.stroke();
     var labelPosition = transform(x0, y, xRatio, -yRatio, xOffset, yOffset);
-    context.fillText(y, labelPosition[0], labelPosition[1] - 5);
+    ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
     y = y + yStep;
   }
-  context.restore();
+  ctx.restore();
 };
 
 function transform(x, y, xRatio, yRatio, xOffset, yOffset) {
