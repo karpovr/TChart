@@ -66,6 +66,7 @@ body {
 }
 
 .checkbox-round-label {
+  display: inline-block;
   cursor: pointer;
   border-radius: 2em;
   vertical-align: middle;

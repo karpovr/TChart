@@ -11,12 +11,21 @@ function Chart(data, container) {
   var canvas = document.createElement("canvas");
   canvas.width = 350;
   canvas.height = 500;
-  container.appendChild(canvas);
   var ctx = canvas.getContext("2d");
+  container.appendChild(canvas);
+
+  var overlay = document.createElement("canvas");
+  overlay.width = canvas.width;
+  overlay.height = canvas.height;
+  overlay.className = "overlay";
+  var overlayCtx = overlay.getContext("2d");
+  container.appendChild(overlay);
 
   this.container = container;
   this.canvas = canvas;
+  this.overlay = overlay;
   this.ctx = ctx;
+  this.overlayCtx = overlayCtx;
   this.data = data;
 
   var settings = {};
@@ -52,17 +61,20 @@ function Chart(data, container) {
 }
 
 Chart.prototype.drawChart = function () {
-  var self = this;
-  this.canvas.style.opacity = 0;
-//  var overlay = document.createElement("canvas");
-  setTimeout(function () {
-    self.clear(self.settings.preview);
-    self.renderView(self.settings.preview, 1, self.settings.total);
-    self.drawLabels(self.settings.view, self.settings.begin, self.settings.end);
-    self.renderView(self.settings.view, self.settings.begin, self.settings.end);
-    self.canvas.style.opacity = 1;
-  }, 250);
+  var canvas = this.canvas;
+  var overlay = this.overlay;
+  var overlayCtx = this.overlayCtx;
+  overlayCtx.drawImage(canvas, 0, 0);
+  overlay.style.opacity = "1";
 
+  canvas.style.opacity = "0";
+  this.clear();
+  this.renderView(this.settings.preview, 1, this.settings.total);
+  this.drawLabels(this.settings.view, this.settings.begin, this.settings.end);
+  this.renderView(this.settings.view, this.settings.begin, this.settings.end);
+  canvas.style.opacity = "1";
+  overlay.style.opacity = "0";
+  //overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
 };
 
 // Calculate extremes for given data range
@@ -102,7 +114,6 @@ Chart.prototype.drawCheckboxes = function () {
 
 // Calculate extremes for given data range
 Chart.prototype.getExtremes = function (begin, end) {
-
   begin = typeof begin !== "undefined" ? begin : this.settings.begin;
   end = typeof end !== "undefined" ? end : this.settings.end;
 
@@ -145,7 +156,6 @@ Chart.prototype.clear = function () {
 };
 
 Chart.prototype.renderView = function (view, begin, end) {
-
   var ctx = this.ctx;
   var extremes = this.getExtremes(begin, end);
   var xRatio = view.width / extremes.xDelta;
@@ -156,7 +166,6 @@ Chart.prototype.renderView = function (view, begin, end) {
 
   ctx.save();
   ctx.lineWidth = view.lineWidth;
-
   var i, j, column_key, column, x0, y0, x, y;
   for (i = 0, column; (column = this.data.columns[i]); i++) {
     column_key = column[0];
@@ -182,7 +191,6 @@ Chart.prototype.renderView = function (view, begin, end) {
 };
 
 Chart.prototype.drawLabels = function (view, begin, end) {
-
   var ctx = this.ctx;
   var extremes = this.getExtremes(begin, end);
   var xRatio = view.width / extremes.xDelta;
