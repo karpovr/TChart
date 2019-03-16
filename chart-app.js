@@ -95,12 +95,10 @@ function ChartsApp() {
     var width = 350;
     var height = 500;
     data.forEach(function (item) {
-      var canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      canvas.className = "chart";
-      chartsContainer.appendChild(canvas);
-      var chart = new Chart(item, canvas);
+      var chart = document.createElement("div");
+      chart.className = "chart";
+      chartsContainer.appendChild(chart);
+      var chartItem = new Chart(item, chart);
     });
   }
 }

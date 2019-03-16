@@ -13,10 +13,13 @@ body {
 }
 
 .chart {
-  border: 1px solid #eee;
-  border-radius: 0.5em;
   margin: 0.5em;
-  transition: opacity .25s;
+  position: relative;
+  display: inline-block;
+}
+
+.chart-legend {
+  margin: 2em 0;
 }
 
 input {

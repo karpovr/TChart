@@ -7,14 +7,17 @@
  * Date: 2019-03-11T09:59Z
  */
 
-function Chart(data, canvas) {
-  if (!canvas.getContext) {
-    throw new Error("Your browser does not support canvas");
-  }
+function Chart(data, container) {
+  var canvas = document.createElement("canvas");
+  canvas.width = 350;
+  canvas.height = 500;
+  container.appendChild(canvas);
   var context = canvas.getContext("2d");
-  this.data = data;
+
+  this.container = container;
   this.canvas = canvas;
   this.context = context;
+  this.data = data;
 
   var settings = {};
   settings.displayed = Object.keys(data.names);
@@ -65,7 +68,9 @@ Chart.prototype.drawChart = function () {
 // Calculate extremes for given data range
 Chart.prototype.drawCheckboxes = function () {
   var self = this;
-  var container = this.canvas.parentNode;
+  var legend = document.createElement("div");
+  legend.className = "chart-legend";
+  this.container.appendChild(legend);
   this.settings.displayed.forEach(function (columnId) {
     var checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -81,7 +86,7 @@ Chart.prototype.drawCheckboxes = function () {
     label.appendChild(checkbox);
     label.appendChild(name);
     label.className = "ripple";
-    container.appendChild(label);
+    legend.appendChild(label);
     checkbox.addEventListener("change", function (e) {
       if (e.target.checked) {
         self.settings.displayed.push(columnId);
