@@ -42,31 +42,36 @@ function Chart(data, canvas) {
   };
   this.settings = settings;
 
-  this.draw();
-}
-
-Chart.prototype.draw = function () {
-  // Preview
-  this.clearView(this.settings.preview);
   this.renderView(this.settings.preview, 1, this.settings.total);
-
-  // Frame view
-  this.clearView(this.settings.view);
   this.drawLabels(this.settings.view, this.settings.begin, this.settings.end);
   this.renderView(this.settings.view, this.settings.begin, this.settings.end);
+  this.drawCheckboxes();
+}
 
-  this.renderCheckbox();
+Chart.prototype.drawChart = function () {
+  var self = this;
+  this.canvas.style.opacity = 0;
+
+  setTimeout(function () {
+    self.clear(self.settings.preview);
+    self.renderView(self.settings.preview, 1, self.settings.total);
+    self.drawLabels(self.settings.view, self.settings.begin, self.settings.end);
+    self.renderView(self.settings.view, self.settings.begin, self.settings.end);
+    self.canvas.style.opacity = 1;
+  }, 250);
+
 };
 
 // Calculate extremes for given data range
-Chart.prototype.renderCheckbox = function () {
+Chart.prototype.drawCheckboxes = function () {
   var self = this;
   var container = this.canvas.parentNode;
   this.settings.displayed.forEach(function (columnId) {
     var checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.name = self.data.names[columnId];
-    checkbox.checked = "checked";
+    checkbox.id = columnId;
+    checkbox.checked = true;
     checkbox.className = "checkbox-round";
     var color = self.data.colors[columnId];
     checkbox.style.backgroundColor = color;
@@ -77,6 +82,16 @@ Chart.prototype.renderCheckbox = function () {
     label.appendChild(name);
     label.className = "ripple";
     container.appendChild(label);
+    checkbox.addEventListener("change", function (e) {
+      if (e.target.checked) {
+        self.settings.displayed.push(columnId);
+      } else {
+        self.settings.displayed = self.settings.displayed.filter(function (item) {
+          return item !== columnId;
+        });
+      }
+      self.drawChart();
+    });
   });
 };
 
@@ -119,9 +134,9 @@ Chart.prototype.getExtremes = function (begin, end) {
   return extremes;
 };
 
-Chart.prototype.clearView = function (view) {
+Chart.prototype.clear = function () {
   var context = this.context;
-  context.clearRect(view.x0, view.y0, view.width, -view.height);
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 };
 
 Chart.prototype.renderView = function (view, begin, end) {

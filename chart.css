@@ -16,6 +16,7 @@ body {
   border: 1px solid #eee;
   border-radius: 0.5em;
   margin: 0.5em;
+  transition: opacity .25s;
 }
 
 input {
@@ -64,7 +65,7 @@ label {
   margin: 1em 1em 0 0;
 }
 
-.ripple {
+/*.ripple {
   background-position: center;
   transition: background 0.5s;
 }
@@ -75,4 +76,4 @@ label {
   background-color: #eee;
   background-size: 100%;
   transition: background 0s;
-}
+}*/
