@@ -1,0 +1,78 @@
+/*
+ * Telegram contest: Charts
+ *
+ * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
+ * Released under the MIT license
+ *
+ * Date: 2019-03-11T09:59Z
+ */
+
+body {
+  font-family: sans-serif;
+  font-size: 1em;
+}
+
+.chart {
+  border: 1px solid #eee;
+  border-radius: 0.5em;
+  margin: 0.5em;
+}
+
+input {
+  margin: 0.5em;
+}
+
+.checkbox-round {
+  width: 2em;
+  height: 2em;
+  background-color: green;
+  border: 2px solid green;
+  border-radius: 1em;
+  vertical-align: middle;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  margin: -0.1em 0.5em 0 -0.2em;
+}
+.checkbox-round:not(:checked):after {
+  content: '';
+  display: block;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 1.7em;
+  background-color: #fff;
+  border-width: 10px;
+}
+.checkbox-round:checked:after {
+  content: '';
+  display: block;
+  width: 0.4em;
+  height: 0.8em;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  margin: 0.2em 0 0 0.5em;
+}
+
+label {
+  cursor: pointer;
+  border-radius: 2em;
+  vertical-align: middle;
+  border: 2px solid #eee;
+  padding: 0.8em;
+  margin: 1em 1em 0 0;
+}
+
+.ripple {
+  background-position: center;
+  transition: background 0.5s;
+}
+.ripple:hover {
+  background: #fff radial-gradient(circle, transparent 1%, #fff 1%) center/15000%;
+}
+.ripple:active {
+  background-color: #eee;
+  background-size: 100%;
+  transition: background 0s;
+}
