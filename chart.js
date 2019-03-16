@@ -64,6 +64,7 @@ Chart.prototype.drawChart = function () {
   var canvas = this.canvas;
   var overlay = this.overlay;
   var overlayCtx = this.overlayCtx;
+  overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
   overlayCtx.drawImage(canvas, 0, 0);
   overlay.style.opacity = "1";
 
@@ -74,7 +75,6 @@ Chart.prototype.drawChart = function () {
   this.renderView(this.settings.view, this.settings.begin, this.settings.end);
   canvas.style.opacity = "1";
   overlay.style.opacity = "0";
-  //overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
 };
 
 // Calculate extremes for given data range
