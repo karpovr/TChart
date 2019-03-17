@@ -64,8 +64,8 @@ Chart.prototype.drawChart = function () {
   var canvas = this.canvas;
   var overlay = this.overlay;
   var overlayCtx = this.overlayCtx;
-  var transition = "opacity .5s";
-  //var transition = "";
+  //var transition = "opacity .5s";
+  var transition = "";
   // Clear overlay and copy current chart
   overlay.style.transition = "";
   overlay.style.opacity = 1;
