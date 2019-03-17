@@ -14,18 +14,9 @@ function Chart(data, container) {
   var ctx = canvas.getContext("2d");
   container.appendChild(canvas);
 
-  var overlay = document.createElement("canvas");
-  overlay.width = canvas.width;
-  overlay.height = canvas.height;
-  overlay.className = "overlay";
-  var overlayCtx = overlay.getContext("2d");
-  container.appendChild(overlay);
-
   this.container = container;
   this.canvas = canvas;
-  this.overlay = overlay;
   this.ctx = ctx;
-  this.overlayCtx = overlayCtx;
   this.data = data;
 
   var settings = {};
@@ -86,22 +77,22 @@ Chart.prototype.drawChart = function () {
   var viewTransformDelta = this.calcTransformDelta(actualViewTransform, formerViewTransform);
 
   var steps = this.settings.animationSteps;
-  for (var i = 0; i < steps; i++) {
-    (function (i) {
-      setTimeout(function () {
-        for (var key in actualPreviewTransform) {
-          actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * (i + 1);
-          actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * (i + 1);
-        }
-        self.clear();
-        self.renderView(self.settings.preview, actualPreviewTransform);
-        self.renderView(self.settings.view, actualViewTransform);
-        self.settings.preview.transform = actualPreviewTransform;
-        self.settings.view.transform = actualViewTransform;
-      }, 16 * i);
-    })(i);
+  var step = 1;
+  function renderStep() {
+    for (var key in actualPreviewTransform) {
+      actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
+      actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * step;
+    }
+    self.clear();
+    self.renderView(self.settings.preview, actualPreviewTransform);
+    self.renderView(self.settings.view, actualViewTransform);
+    self.settings.preview.transform = actualPreviewTransform;
+    self.settings.view.transform = actualViewTransform;
+    if (++step <= steps) {
+      requestAnimationFrame(renderStep);
+    }
   }
-
+  requestAnimationFrame(renderStep);
 };
 
 Chart.prototype.calcTransformDelta = function (actual, former) {
