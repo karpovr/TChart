@@ -29,6 +29,7 @@ function Chart(data, container) {
   this.data = data;
 
   var settings = {};
+  settings.animationSteps = 10;
   settings.displayed = Object.keys(data.names);
   settings.total = data.columns[0].length - 1;
   settings.begin = settings.total - (settings.total >> 2);
@@ -38,9 +39,10 @@ function Chart(data, container) {
     y0: canvas.height,
     x1: canvas.width,
     y1: Math.floor(canvas.height - canvas.height / 10),
-    lineWidth: 1,
     width: canvas.width,
-    height: Math.floor(canvas.height / 10)
+    height: Math.floor(canvas.height / 10),
+    lineWidth: 1,
+    labels: 0
   };
   settings.view = {
     x0: 0,
@@ -54,41 +56,64 @@ function Chart(data, container) {
   };
   this.settings = settings;
 
-  this.renderView(this.settings.preview, 1, this.settings.total);
-  this.drawLabels(this.settings.view, this.settings.begin, this.settings.end);
-  this.renderView(this.settings.view, this.settings.begin, this.settings.end);
-  this.drawCheckboxes();
+  this.drawLegend();
+  this.drawChart();
 }
 
 Chart.prototype.drawChart = function () {
-  var canvas = this.canvas;
-  var overlay = this.overlay;
-  var overlayCtx = this.overlayCtx;
-  //var transition = "opacity .5s";
-  var transition = "";
-  // Clear overlay and copy current chart
-  overlay.style.transition = "";
-  overlay.style.opacity = 1;
-  overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-  overlayCtx.drawImage(canvas, 0, 0);
 
-  // Clear main canvas and draw renewed chart
-  canvas.style.transition = "";
-  canvas.style.opacity = 0;
-  this.clear();
-  this.renderView(this.settings.preview, 1, this.settings.total);
-  this.drawLabels(this.settings.view, this.settings.begin, this.settings.end);
-  this.renderView(this.settings.view, this.settings.begin, this.settings.end);
+  var self = this;
+  var formerPreviewTransform = this.settings.preview.transform;
+  var formerViewTransform = this.settings.view.transform;
 
-  overlay.style.transition = transition;
-  overlay.style.opacity = 0;
-  canvas.style.transition = transition;
-  canvas.style.opacity = 1;
+  var actualPreviewTransform = this.calcTransform(this.settings.preview, 1, this.settings.total);
+  var actualViewTransform = this.calcTransform(this.settings.view, this.settings.begin, this.settings.end);
+
+  if (!actualPreviewTransform) {
+    this.clear();
+  }
+
+  if (!formerPreviewTransform) {
+    this.clear();
+    this.renderView(this.settings.preview, actualPreviewTransform);
+    this.renderView(this.settings.view, actualViewTransform);
+    this.settings.preview.transform = actualPreviewTransform;
+    this.settings.view.transform = actualViewTransform;
+    return;
+  }
+
+  var previewTransformDelta = this.calcTransformDelta(actualPreviewTransform, formerPreviewTransform);
+  var viewTransformDelta = this.calcTransformDelta(actualViewTransform, formerViewTransform);
+
+  var steps = this.settings.animationSteps;
+  for (var i = 0; i < steps; i++) {
+    (function (i) {
+      setTimeout(function () {
+        for (var key in actualPreviewTransform) {
+          actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * (i + 1);
+          actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * (i + 1);
+        }
+        self.clear();
+        self.renderView(self.settings.preview, actualPreviewTransform);
+        self.renderView(self.settings.view, actualViewTransform);
+        self.settings.preview.transform = actualPreviewTransform;
+        self.settings.view.transform = actualViewTransform;
+      }, 16 * i);
+    })(i);
+  }
 
 };
 
+Chart.prototype.calcTransformDelta = function (actual, former) {
+  var delta = {};
+  for (var key in actual) {
+    delta[key] = actual[key] - former[key];
+  }
+  return delta;
+};
+
 // Calculate extremes for given data range
-Chart.prototype.drawCheckboxes = function () {
+Chart.prototype.drawLegend = function () {
   var self = this;
   var legend = document.createElement("div");
   legend.className = "chart-legend";
@@ -125,6 +150,7 @@ Chart.prototype.drawCheckboxes = function () {
 
 // Calculate extremes for given data range
 Chart.prototype.calcTransform = function (view, begin, end) {
+  if (this.settings.displayed.length == 0) { return; }
   var i,
       j,
       column,
@@ -156,10 +182,8 @@ Chart.prototype.calcTransform = function (view, begin, end) {
   transform.end = end;
   transform.minY = minY;
   transform.maxY = maxY;
-  transform.xDelta = transform.maxX - transform.minX;
-  transform.yDelta = transform.maxY - transform.minY;
-  transform.xRatio = view.width / transform.xDelta;
-  transform.yRatio = -view.height / transform.yDelta;
+  transform.xRatio = view.width / (transform.maxX - transform.minX);
+  transform.yRatio = -view.height / (transform.maxY - transform.minY);
   transform.xOffset = -transform.minX * transform.xRatio;
   transform.yOffset = -transform.maxY * transform.yRatio + view.y1;
   transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
@@ -171,10 +195,9 @@ Chart.prototype.clear = function () {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 };
 
-Chart.prototype.renderView = function (view, begin, end) {
+Chart.prototype.renderView = function (view, transform) {
   var ctx = this.ctx;
-  var transform = this.calcTransform(view, begin, end);
-  view.transform = transform;
+  this.drawLabels(view, transform);
 
   ctx.save();
   ctx.lineWidth = view.lineWidth;
@@ -187,11 +210,11 @@ Chart.prototype.renderView = function (view, begin, end) {
     ctx.strokeStyle = this.data.colors[column_key];
     ctx.save();
     ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-    x0 = this.data.columns[0][begin];
-    y0 = column[begin];
+    x0 = this.data.columns[0][transform.begin];
+    y0 = column[transform.begin];
     ctx.beginPath();
     ctx.moveTo(x0, y0);
-    for (j = begin; j <= end; j += transform.xStep) {
+    for (j = transform.begin; j <= transform.end; j += transform.xStep) {
       x = this.data.columns[0][j];
       y = column[j];
       ctx.lineTo(x, y);
@@ -202,10 +225,8 @@ Chart.prototype.renderView = function (view, begin, end) {
   ctx.restore();
 };
 
-Chart.prototype.drawLabels = function (view, begin, end) {
+Chart.prototype.drawLabels = function (view, transform) {
   var ctx = this.ctx;
-  var transform = this.calcTransform(view, begin, end);
-  view.transform = transform;
 
   // Draw labels
   ctx.save();
@@ -214,7 +235,7 @@ Chart.prototype.drawLabels = function (view, begin, end) {
   ctx.strokeStyle = "#eee";
   ctx.fillStyle = "#aaa";
   ctx.lineWidth = 1;
-  var yStep = Math.round(transform.yDelta / view.labels);
+  var yStep = Math.round( (transform.maxY - transform.minY) / view.labels);
   var power = Math.abs(yStep).toString().length - 1;
   yStep = Math.round( yStep / Math.pow(10, power) ) * Math.pow(10, power);
   var y = Math.round(transform.minY / yStep) * yStep;
