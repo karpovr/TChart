@@ -18,10 +18,6 @@ body {
   display: inline-block;
 }
 
-.chart canvas {
-  transition: opacity .5s;
-}
-
 .chart canvas.overlay {
   position: absolute;
   top: 0;
@@ -36,23 +32,22 @@ body {
   width: 2em;
   height: 2em;
   background-color: green;
-  border: 2px solid green;
+  border: 0.15em solid green;
   border-radius: 1em;
   vertical-align: middle;
   -webkit-appearance: none;
   outline: none;
   cursor: pointer;
   padding: 0;
-  margin: -0.1em 0.5em 0 -0.2em;
 }
 .checkbox-round:not(:checked):after {
   content: '';
+  text-align: center;
   display: block;
   width: 1.7em;
   height: 1.7em;
-  border-radius: 1.7em;
+  border-radius: 0.85em;
   background-color: #fff;
-  border-width: 10px;
 }
 .checkbox-round:checked:after {
   content: '';
