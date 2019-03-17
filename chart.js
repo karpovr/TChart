@@ -62,8 +62,8 @@ Chart.prototype.drawChart = function () {
 
   if (!actualPreviewTransform) {
     this.clear();
+    return;
   }
-
   if (!formerPreviewTransform) {
     this.clear();
     this.renderView(this.settings.preview, actualPreviewTransform);
@@ -82,6 +82,10 @@ Chart.prototype.drawChart = function () {
     for (var key in actualPreviewTransform) {
       actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
       actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * step;
+      if (key === "begin" || key === "end") {
+        actualPreviewTransform[key] = actualPreviewTransform[key] >> 0;
+        actualViewTransform[key] = actualViewTransform[key] >> 0;
+      }
     }
     self.clear();
     self.renderView(self.settings.preview, actualPreviewTransform);
