@@ -65,6 +65,7 @@ Chart.prototype.drawChart = function () {
   var overlay = this.overlay;
   var overlayCtx = this.overlayCtx;
   var transition = "opacity .5s";
+  //var transition = "";
   // Clear overlay and copy current chart
   overlay.style.transition = "";
   overlay.style.opacity = 1;
@@ -158,11 +159,10 @@ Chart.prototype.calcTransform = function (view, begin, end) {
   transform.xDelta = transform.maxX - transform.minX;
   transform.yDelta = transform.maxY - transform.minY;
   transform.xRatio = view.width / transform.xDelta;
-  transform.yRatio = view.height / transform.yDelta;
+  transform.yRatio = -view.height / transform.yDelta;
   transform.xOffset = -transform.minX * transform.xRatio;
-  transform.yOffset = transform.maxY * transform.yRatio + view.y1;
+  transform.yOffset = -transform.maxY * transform.yRatio + view.y1;
   transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
-  view.transform = transform;
   return transform;
 };
 
@@ -174,6 +174,7 @@ Chart.prototype.clear = function () {
 Chart.prototype.renderView = function (view, begin, end) {
   var ctx = this.ctx;
   var transform = this.calcTransform(view, begin, end);
+  view.transform = transform;
 
   ctx.save();
   ctx.lineWidth = view.lineWidth;
@@ -185,7 +186,7 @@ Chart.prototype.renderView = function (view, begin, end) {
     }
     ctx.strokeStyle = this.data.colors[column_key];
     ctx.save();
-    ctx.setTransform(transform.xRatio, 0, 0, -transform.yRatio, transform.xOffset, transform.yOffset);
+    ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
     x0 = this.data.columns[0][begin];
     y0 = column[begin];
     ctx.beginPath();
@@ -204,6 +205,7 @@ Chart.prototype.renderView = function (view, begin, end) {
 Chart.prototype.drawLabels = function (view, begin, end) {
   var ctx = this.ctx;
   var transform = this.calcTransform(view, begin, end);
+  view.transform = transform;
 
   // Draw labels
   ctx.save();
@@ -218,7 +220,7 @@ Chart.prototype.drawLabels = function (view, begin, end) {
   var y = Math.round(transform.minY / yStep) * yStep;
   while ( y < transform.maxY) {
     ctx.save();
-    ctx.setTransform(transform.xRatio, 0, 0, -transform.yRatio, transform.xOffset, transform.yOffset);
+    ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
     ctx.beginPath();
     var x0 = transform.minX;
     var x1 = transform.maxX;
@@ -241,6 +243,6 @@ Chart.prototype.drawLabels = function (view, begin, end) {
 function applyTransform(x, y, transform) {
   return [
     x * transform.xRatio + transform.xOffset,
-    -y * transform.yRatio + transform.yOffset
+    y * transform.yRatio + transform.yOffset
   ];
 }
