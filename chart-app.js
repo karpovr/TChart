@@ -2,7 +2,6 @@
  * Telegram contest: Charts
  *
  * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
- * Released under the MIT license
  *
  * Date: 2019-03-11T09:59Z
  */

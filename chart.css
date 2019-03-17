@@ -2,7 +2,6 @@
  * Telegram contest: Charts
  *
  * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
- * Released under the MIT license
  *
  * Date: 2019-03-11T09:59Z
  */
@@ -16,6 +15,7 @@ body {
   margin: 0.5em;
   position: relative;
   display: inline-block;
+  vertical-align: top;
 }
 .chart canvas.overlay {
   position: absolute;
@@ -31,7 +31,6 @@ body {
   padding: 0.5em 0.75em;
   position: absolute;
   top: 0;
-  left: 0;
   background-color: #fff;
   border-radius: 0.5em;
   border: 1px solid #eee;

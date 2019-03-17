@@ -2,7 +2,6 @@
  * Telegram contest: Charts
  *
  * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
- * Released under the MIT license
  *
  * Date: 2019-03-11T09:59Z
  */
@@ -65,10 +64,6 @@ function Chart(data, container) {
 Chart.prototype.bindMouseEvents = function () {
   var self = this;
   var currentIndex;
-  var tooltip = document.createElement("div");
-  tooltip.className = "chart-tooltip";
-  tooltip.style.display = "none";
-  this.container.appendChild(tooltip);
   this.overlay.addEventListener("mousemove", function(e) {
     var rect = e.target.getBoundingClientRect();
     var x = Math.round(e.clientX - rect.left);
@@ -78,20 +73,25 @@ Chart.prototype.bindMouseEvents = function () {
       self.settings.view.y1 <= y && y <= self.settings.view.y0
     ) {
       var viewPoint = applyTransform(x, y, self.settings.view.transform, true);
-      var pointIndex = binarySearch(self.data.columns[0], viewPoint[0], function (a, b) { return a - b; });
-      if (pointIndex < 0) {
-        pointIndex = Math.abs(pointIndex) - 1;
+      var pointerIndex = binarySearch(self.data.columns[0], viewPoint[0], function (a, b) { return a - b; });
+      if (pointerIndex < 0) {
+        pointerIndex = Math.abs(pointerIndex) - 1;
       }
-      if (pointIndex === currentIndex) { return; }
-      currentIndex = pointIndex;
+      if (pointerIndex === currentIndex) { return; }
+      currentIndex = pointerIndex;
       renderVRule();
       renderTooltip();
     }
   });
 
+  var tooltip = document.createElement("div");
+  tooltip.className = "chart-tooltip";
+  tooltip.style.opacity = "0";
+  this.container.appendChild(tooltip);
+
   function renderTooltip() {
     tooltip.innerHTML = "";
-    tooltip.style.display = "block";
+    tooltip.style.opacity = "1";
     var xValue = self.data.columns[0][currentIndex];
     var xCaption = document.createElement("div");
     xCaption.textContent = new Date(xValue).toDateString();
@@ -115,6 +115,16 @@ Chart.prototype.bindMouseEvents = function () {
         label.textContent = yLabel;
       }
     });
+    var width = tooltip.offsetWidth;
+    var tooltipX = applyTransform(xValue, 0, self.settings.view.transform)[0];
+    tooltipX = tooltipX - width / 2;
+    if (tooltipX <= 0) {
+      tooltip.style.left = 0;
+    } else if (tooltipX + width / 2 >= self.settings.view.x1) {
+      tooltip.style.right = self.settings.view.x1;
+    } else {
+      tooltip.style.left = tooltipX + "px";
+    }
   }
 
   function renderVRule() {
