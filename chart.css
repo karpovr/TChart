@@ -11,23 +11,19 @@ body {
   font-family: sans-serif;
   font-size: 1em;
 }
-
 .chart {
   margin: 0.5em;
   position: relative;
   display: inline-block;
 }
-
 .chart canvas.overlay {
   position: absolute;
   top: 0;
   left: 0;
 }
-
 .chart-legend {
-  margin: 2em 0;
+  margin: 0;
 }
-
 .checkbox-round {
   width: 2em;
   height: 2em;
@@ -58,9 +54,8 @@ body {
   border: solid #fff;
   border-width: 0 3px 3px 0;
   transform: rotate(45deg);
-  margin: 0.2em 0 0 0.5em;
+  margin: 0.2em 0 0 0.55em;
 }
-
 .checkbox-round-label {
   display: inline-block;
   cursor: pointer;
