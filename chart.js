@@ -368,7 +368,7 @@ Chart.prototype.calcTransform = function (view, begin, end) {
         end: end
       };
 
-  for (i = 0; column = this.data.columns[i]; i++) {
+  for (i = 0; (column = this.data.columns[i]); i++) {
     column_key = column[0];
     if (column_key === "x") {
       transform.minX = column[begin];
@@ -414,7 +414,7 @@ Chart.prototype.renderView = function (view, transform) {
   ctx.save();
   ctx.lineWidth = view.lineWidth;
   var i, j, column_key, column, x0, y0, x, y;
-  for (i = 0; column = this.data.columns[i]; i++) {
+  for (i = 0; (column = this.data.columns[i]); i++) {
     column_key = column[0];
     if (column_key === "x" || this.settings.displayed.indexOf(column_key) < 0) {
       continue;
