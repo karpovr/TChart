@@ -73,10 +73,16 @@ Chart.prototype.bindMouseEvents = function () {
       self.settings.view.x0 <= x && x <= self.settings.view.x1 &&
       self.settings.view.y1 <= y && y <= self.settings.view.y0
     ) {
-      var viewPoint = applyTransform(x, y, self.settings.view.transform, true);
-      var pointerIndex = binarySearch(self.data.columns[0], viewPoint[0], function (a, b) { return a - b; });
+      x = applyTransform(x, y, self.settings.view.transform, true)[0];
+      var column = self.data.columns[0];
+      var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
       if (pointerIndex < 0) {
         pointerIndex = Math.abs(pointerIndex) - 1;
+      }
+      var x1 = column[pointerIndex];
+      var x2 = column[pointerIndex - 1];
+      if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
+        pointerIndex = pointerIndex - 1;
       }
       if (pointerIndex === currentIndex) { return; }
       currentIndex = pointerIndex;
@@ -404,19 +410,18 @@ function applyTransform(x, y, transform, reverse) {
 }
 
 // Binary search helper
-function binarySearch(arr, el, fn) {
-  var m = 0;
-  var n = arr.length - 1;
-  while (m <= n) {
-    var k = (n + m) >> 1;
-    var cmp = fn(el, arr[k]);
-    if (cmp > 0) {
-      m = k + 1;
-    } else if(cmp < 0) {
-      n = k - 1;
+function binarySearch(array, value, compare) {
+  var i = 0, j, k = array.length - 1, cmp_res;
+  while (i <= k) {
+    j = (k + i) >> 1;
+    cmp_res = compare(value, array[j]);
+    if (cmp_res > 0) {
+      i = j + 1;
+    } else if (cmp_res < 0) {
+      k = j - 1;
     } else {
-      return k;
+      return j;
     }
   }
-  return -m - 1;
+  return -i - 1;
 }
