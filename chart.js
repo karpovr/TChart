@@ -164,11 +164,7 @@ Chart.prototype.drawChart = function () {
     return;
   }
   if (!formerPreviewTransform) {
-    this.clear();
-    this.renderView(this.settings.preview, actualPreviewTransform);
-    this.renderView(this.settings.view, actualViewTransform);
-    this.settings.preview.transform = actualPreviewTransform;
-    this.settings.view.transform = actualViewTransform;
+    renderViews(this);
     return;
   }
 
@@ -177,6 +173,8 @@ Chart.prototype.drawChart = function () {
 
   var steps = this.settings.animationSteps;
   var step = 1;
+  requestAnimationFrame(renderStep);
+
   function renderStep() {
     for (var key in actualPreviewTransform) {
       actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
@@ -186,16 +184,19 @@ Chart.prototype.drawChart = function () {
         actualViewTransform[key] = actualViewTransform[key] >> 0;
       }
     }
-    self.clear();
-    self.renderView(self.settings.preview, actualPreviewTransform);
-    self.renderView(self.settings.view, actualViewTransform);
-    self.settings.preview.transform = actualPreviewTransform;
-    self.settings.view.transform = actualViewTransform;
+    renderViews(self);
     if (++step <= steps) {
       requestAnimationFrame(renderStep);
     }
   }
-  requestAnimationFrame(renderStep);
+
+  function renderViews(chart) {
+    chart.clear();
+    chart.renderView(chart.settings.preview, actualPreviewTransform);
+    chart.renderView(chart.settings.view, actualViewTransform);
+    chart.settings.preview.transform = actualPreviewTransform;
+    chart.settings.view.transform = actualViewTransform;
+  }
 };
 
 Chart.prototype.calcTransformDelta = function (actual, former) {
