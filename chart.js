@@ -118,10 +118,12 @@ Chart.prototype.bindMouseEvents = function () {
     var width = tooltip.offsetWidth;
     var tooltipX = applyTransform(xValue, 0, self.settings.view.transform)[0];
     tooltipX = tooltipX - width / 2;
+    tooltip.style.left = "";
+    tooltip.style.right = "";
     if (tooltipX <= 0) {
       tooltip.style.left = 0;
-    } else if (tooltipX + width / 2 >= self.settings.view.x1) {
-      tooltip.style.right = self.settings.view.x1;
+    } else if (tooltipX + width >= self.settings.view.x1) {
+      tooltip.style.right = 0;
     } else {
       tooltip.style.left = tooltipX + "px";
     }
