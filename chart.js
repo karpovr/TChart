@@ -29,6 +29,7 @@ function Chart(data, container) {
   this.data = data;
 
   var settings = {};
+  this.settings = settings;
   settings.animationSteps = 10;
   settings.displayed = Object.keys(data.names);
   settings.total = data.columns[0].length - 1;
@@ -54,15 +55,102 @@ function Chart(data, container) {
     lineWidth: 3,
     labels: 5
   };
-  this.settings = settings;
+  settings.day = {
+    label: "#96a2aa",
+    yline: "#f2f4f5",
+    vline: "#dfe6eb",
+    zline: "#ecf0f3",
+    bg: "#fff"
+  };
+  settings.night = {
+    label: "#546778",
+    yline: "#293544",
+    vline: "#3b4a5a",
+    zline: "#313d4d",
+    bg: "#242f3e"
+  };
+
+  // Listen to mode switch event
+  var self = this;
+  var body = document.getElementsByTagName("body")[0];
+  body.addEventListener("mode", function (e) {
+    self.settings.mode = e.detail;
+    self.drawChart();
+  });
+  settings.mode = body.className.indexOf("night") >= 0 ? "night" : "day";
 
   this.drawLegend();
   this.drawChart();
-  this.bindMouseEvents();
+  this.setMainInteraction();
+  this.setPreviewInteraction();
 }
 
-// Bind mouse events
-Chart.prototype.bindMouseEvents = function () {
+Chart.prototype.setPreviewInteraction = function () {
+  var self = this;
+  var ctx = this.overlayCtx;
+  var view = this.settings.view;
+  var preview = this.settings.preview;
+  ctx.save();
+  ctx.fillStyle = "#88a";
+  ctx.globalAlpha = 0.1;
+  ctx.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
+  ctx.restore();
+  ctx.stroke();
+
+  var begin = view.transform.begin;
+  var end = view.transform.end;
+  var xBegin = this.data.columns[0][begin];
+  var xEnd = this.data.columns[0][end];
+  var x0 = applyTransform(xBegin, 0, preview.transform)[0];
+  var x1 = applyTransform(xEnd, 0, preview.transform)[0];
+
+  ctx.clearRect(x0, preview.y0, x1, preview.y1 - preview.y0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x0, preview.y0);
+  ctx.lineTo(x1, preview.y0);
+  ctx.lineTo(x1, preview.y1);
+  ctx.lineTo(x0, preview.y1);
+  ctx.closePath();
+  // Hole
+  ctx.moveTo(x0 + 5, preview.y0 - 1);
+  ctx.lineTo(x1 - 5, preview.y0 - 1);
+  ctx.lineTo(x1 - 5, preview.y1 + 1);
+  ctx.lineTo(x0 + 5, preview.y1 + 1);
+  ctx.closePath();
+  //fill
+  ctx.fillStyle = "#445";
+  ctx.globalAlpha = 0.2;
+  ctx.fill("evenodd");
+  ctx.restore();
+
+  this.overlay.addEventListener("mousemove", function(e) {
+    var rect = e.target.getBoundingClientRect();
+    var x = Math.round(e.clientX - rect.left);
+    var y = Math.round(e.clientY - rect.top);
+    if (
+      self.settings.preview.x0 <= x && x <= self.settings.preview.x1 &&
+      self.settings.preview.y1 <= y && y <= self.settings.preview.y0
+    ) {
+      x = applyTransform(x, y, self.settings.preview.transform, true)[0];
+      var column = self.data.columns[0];
+      var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
+      if (pointerIndex < 0) {
+        pointerIndex = Math.abs(pointerIndex) - 1;
+      }
+      var x1 = column[pointerIndex];
+      var x2 = column[pointerIndex - 1];
+      if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
+        pointerIndex = pointerIndex - 1;
+      }
+      console.log(pointerIndex);
+    }
+  });
+
+};
+
+// Set interaction with chart
+Chart.prototype.setMainInteraction = function () {
   var self = this;
   var currentIndex;
   this.overlay.addEventListener("mousemove", function(e) {
@@ -99,10 +187,9 @@ Chart.prototype.bindMouseEvents = function () {
 
   function renderTooltip() {
     tooltip.innerHTML = "";
-    tooltip.style.opacity = "1";
     var xValue = self.data.columns[0][currentIndex];
     var xCaption = document.createElement("div");
-    xCaption.textContent = new Date(xValue).toDateString();
+    xCaption.textContent = new Date(xValue).toDateString().split(" ").slice(0, -1).join(" ").replace(" ", ", ");
     tooltip.appendChild(xCaption);
     self.data.columns.forEach(function (column) {
       var columnId = column[0];
@@ -123,6 +210,7 @@ Chart.prototype.bindMouseEvents = function () {
         label.textContent = yLabel;
       }
     });
+    tooltip.style.opacity = "1";
     var width = tooltip.offsetWidth;
     var left = applyTransform(xValue, 0, self.settings.view.transform)[0];
     left += 15;
@@ -133,16 +221,10 @@ Chart.prototype.bindMouseEvents = function () {
     } else {
       tooltip.style.right = self.settings.view.x1 - left + 30 + "px";
     }
-    //~ if (left <= 0) {
-      //~ tooltip.style.left = 0;
-    //~ } else if (left + width >= self.settings.view.x1) {
-      //~ tooltip.style.right = 0;
-    //~ } else {
-      //~ tooltip.style.left = left + "px";
-    //~ }
   }
 
   function renderVRule(chart) {
+    var colors = self.settings[self.settings.mode];
     var overlayCtx = self.overlayCtx;
     overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
     var transform = self.settings.view.transform;
@@ -155,7 +237,7 @@ Chart.prototype.bindMouseEvents = function () {
     overlayCtx.moveTo(x, y0);
     overlayCtx.lineTo(x, y1);
     overlayCtx.restore();
-    overlayCtx.strokeStyle = "#aaa";
+    overlayCtx.strokeStyle = colors.vline;
     overlayCtx.lineWidth = 1;
     overlayCtx.stroke();
 
@@ -168,7 +250,7 @@ Chart.prototype.bindMouseEvents = function () {
         overlayCtx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
         var color = self.data.colors[columnId];
         overlayCtx.strokeStyle = color;
-        overlayCtx.fillStyle = "#fff";
+        overlayCtx.fillStyle = colors.bg;
         overlayCtx.lineWidth = 3;
         overlayCtx.fill();
         overlayCtx.stroke();
@@ -256,7 +338,7 @@ Chart.prototype.drawLegend = function () {
     var name = document.createTextNode(checkbox.name);
     label.appendChild(checkbox);
     label.appendChild(name);
-    label.className = "checkbox-round-label";
+    label.className = "checkbox-round-label ripple";
     legend.appendChild(label);
     checkbox.addEventListener("change", function (e) {
       if (e.target.checked) {
@@ -358,13 +440,13 @@ Chart.prototype.renderView = function (view, transform) {
 // Draw labels in view
 Chart.prototype.drawLabels = function (view, transform) {
   if (!view.labels) { return; }
-
+  var colors = this.settings[this.settings.mode];
   var ctx = this.ctx;
   ctx.save();
-  ctx.font = "12px sans-serif";
+  ctx.font = "14px sans-serif";
   ctx.textBaseline = "bottom";
-  ctx.strokeStyle = "#eee";
-  ctx.fillStyle = "#aaa";
+  ctx.strokeStyle = colors.yline;
+  ctx.fillStyle = colors.label;
   ctx.lineWidth = 1;
   var yStep = Math.round( (transform.maxY - transform.minY) / view.labels);
   var power = Math.abs(yStep).toString().length - 1;
@@ -380,14 +462,25 @@ Chart.prototype.drawLabels = function (view, transform) {
     ctx.lineTo(x1, y);
     ctx.restore();
     if (y === 0) {
-      ctx.strokeStyle = "#aaa";
+      ctx.strokeStyle = colors.zline;
     } else {
-      ctx.strokeStyle = "#eee";
+      ctx.strokeStyle = colors.yline;
     }
     ctx.stroke();
     var labelPosition = applyTransform(x0, y, transform);
     ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
-    y = y + yStep;
+    y += yStep;
+  }
+
+  ctx.textBaseline = "top";
+  var xStep = Math.floor( (transform.end - transform.begin) / view.labels );
+  var x = transform.begin;
+  while ( x < transform.end) {
+    var value = this.data.columns[0][x];
+    var labelX = applyTransform(value, 0, transform)[0];
+    value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
+    ctx.fillText(value, labelX, view.y0 + 10);
+    x += xStep;
   }
   ctx.restore();
 };
