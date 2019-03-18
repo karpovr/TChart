@@ -117,25 +117,28 @@ Chart.prototype.bindMouseEvents = function () {
     });
     var width = tooltip.offsetWidth;
     var left = applyTransform(xValue, 0, self.settings.view.transform)[0];
-    left -= width / 2;
+    left += 15;
     tooltip.style.left = "";
     tooltip.style.right = "";
-    if (left <= 0) {
-      tooltip.style.left = 0;
-    } else if (left + width >= self.settings.view.x1) {
-      tooltip.style.right = 0;
-    } else {
+    if ( left + width <= self.settings.view.x1 ) {
       tooltip.style.left = left + "px";
+    } else {
+      tooltip.style.right = self.settings.view.x1 - left + 30 + "px";
     }
+    //~ if (left <= 0) {
+      //~ tooltip.style.left = 0;
+    //~ } else if (left + width >= self.settings.view.x1) {
+      //~ tooltip.style.right = 0;
+    //~ } else {
+      //~ tooltip.style.left = left + "px";
+    //~ }
   }
 
-  function renderVRule() {
+  function renderVRule(chart) {
     var overlayCtx = self.overlayCtx;
-    overlayCtx.save();
     overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-    overlayCtx.strokeStyle = "#aaa";
-    overlayCtx.save();
     var transform = self.settings.view.transform;
+    overlayCtx.save();
     overlayCtx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
     overlayCtx.beginPath();
     var x = self.data.columns[0][currentIndex];
@@ -144,8 +147,25 @@ Chart.prototype.bindMouseEvents = function () {
     overlayCtx.moveTo(x, y0);
     overlayCtx.lineTo(x, y1);
     overlayCtx.restore();
+    overlayCtx.strokeStyle = "#aaa";
+    overlayCtx.lineWidth = 1;
     overlayCtx.stroke();
-    overlayCtx.restore();
+
+    self.data.columns.forEach(function (column) {
+      var columnId = column[0];
+      if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
+        var y = column[currentIndex];
+        var canvasPoint = applyTransform(x, y, transform);
+        overlayCtx.beginPath();
+        overlayCtx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
+        var color = self.data.colors[columnId];
+        overlayCtx.strokeStyle = color;
+        overlayCtx.fillStyle = "#fff";
+        overlayCtx.lineWidth = 3;
+        overlayCtx.fill();
+        overlayCtx.stroke();
+      }
+    });
   }
 };
 
