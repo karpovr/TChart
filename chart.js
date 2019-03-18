@@ -20,6 +20,7 @@ function Chart(data, container) {
   overlay.height = canvas.height;
   var overlayCtx = overlay.getContext("2d");
 
+  this.id = Date.now();
   this.container = container;
   this.canvas = canvas;
   this.overlay = overlay;
@@ -86,6 +87,7 @@ Chart.prototype.bindMouseEvents = function () {
 
   var tooltip = document.createElement("div");
   tooltip.className = "chart-tooltip";
+  tooltip.id = "chart-tooltip-" + this.id;
   tooltip.style.opacity = "0";
   this.container.appendChild(tooltip);
 
@@ -307,7 +309,13 @@ Chart.prototype.calcTransform = function (view, begin, end) {
 
 Chart.prototype.clear = function () {
   var ctx = this.ctx;
+  var overlayCtx = this.overlayCtx;
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  overlayCtx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  var tooltip = document.getElementById("chart-tooltip-" + this.id);
+  if (tooltip) {
+    tooltip.style.opacity = 0;
+  }
 };
 
 // Render view / preview
