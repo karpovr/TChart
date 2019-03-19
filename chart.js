@@ -13,26 +13,31 @@ function Chart(data, container) {
   var ctx = canvas.getContext("2d");
   container.appendChild(canvas);
 
-  var overlay = document.createElement("canvas");
-  overlay.className = "overlay";
-  container.appendChild(overlay);
-  overlay.width = canvas.width;
-  overlay.height = canvas.height;
-  var overlayCtx = overlay.getContext("2d");
+  var over = document.createElement("canvas");
+  over.className = "overlay";
+  container.appendChild(over);
+  over.width = canvas.width;
+  over.height = canvas.height;
+  var overCtx = over.getContext("2d");
 
   this.id = Date.now();
   this.container = container;
   this.canvas = canvas;
-  this.overlay = overlay;
+  this.over = over;
   this.ctx = ctx;
-  this.overlayCtx = overlayCtx;
+  this.overCtx = overCtx;
   this.data = data;
 
   var settings = {};
   this.settings = settings;
+  this.data.columns.forEach(function (column, i) {
+    if (column[0] === "x") {
+      settings.xColumn = i;
+    }
+  });
   settings.animationSteps = 10;
   settings.displayed = Object.keys(data.names);
-  settings.total = data.columns[0].length - 1;
+  settings.total = data.columns[settings.xColumn].length - 1;
   settings.begin = settings.total - (settings.total >> 2);
   settings.end = settings.total;
   settings.preview = {
@@ -87,7 +92,7 @@ function Chart(data, container) {
 
 Chart.prototype.setPreviewInteraction = function () {
   var self = this;
-  var ctx = this.overlayCtx;
+  var ctx = this.overCtx;
   var view = this.settings.view;
   var preview = this.settings.preview;
   ctx.save();
@@ -97,10 +102,11 @@ Chart.prototype.setPreviewInteraction = function () {
   ctx.restore();
   ctx.stroke();
 
+  var xColumn = this.settings.xColumn;
   var begin = view.transform.begin;
   var end = view.transform.end;
-  var xBegin = this.data.columns[0][begin];
-  var xEnd = this.data.columns[0][end];
+  var xBegin = this.data.columns[xColumn][begin];
+  var xEnd = this.data.columns[xColumn][end];
   var x0 = applyTransform(xBegin, 0, preview.transform)[0];
   var x1 = applyTransform(xEnd, 0, preview.transform)[0];
 
@@ -124,7 +130,7 @@ Chart.prototype.setPreviewInteraction = function () {
   ctx.fill("evenodd");
   ctx.restore();
 
-  this.overlay.addEventListener("mousemove", function(e) {
+  this.over.addEventListener("mousemove", function(e) {
     var rect = e.target.getBoundingClientRect();
     var x = Math.round(e.clientX - rect.left);
     var y = Math.round(e.clientY - rect.top);
@@ -133,7 +139,7 @@ Chart.prototype.setPreviewInteraction = function () {
       self.settings.preview.y1 <= y && y <= self.settings.preview.y0
     ) {
       x = applyTransform(x, y, self.settings.preview.transform, true)[0];
-      var column = self.data.columns[0];
+      var column = self.data.columns[xColumn];
       var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
       if (pointerIndex < 0) {
         pointerIndex = Math.abs(pointerIndex) - 1;
@@ -152,8 +158,9 @@ Chart.prototype.setPreviewInteraction = function () {
 // Set interaction with chart
 Chart.prototype.setMainInteraction = function () {
   var self = this;
+  var xColumn = this.settings.xColumn;
   var currentIndex;
-  this.overlay.addEventListener("mousemove", function(e) {
+  this.over.addEventListener("mousemove", function(e) {
     var rect = e.target.getBoundingClientRect();
     var x = Math.round(e.clientX - rect.left);
     var y = Math.round(e.clientY - rect.top);
@@ -162,7 +169,7 @@ Chart.prototype.setMainInteraction = function () {
       self.settings.view.y1 <= y && y <= self.settings.view.y0
     ) {
       x = applyTransform(x, y, self.settings.view.transform, true)[0];
-      var column = self.data.columns[0];
+      var column = self.data.columns[xColumn];
       var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
       if (pointerIndex < 0) {
         pointerIndex = Math.abs(pointerIndex) - 1;
@@ -187,7 +194,7 @@ Chart.prototype.setMainInteraction = function () {
 
   function renderTooltip() {
     tooltip.innerHTML = "";
-    var xValue = self.data.columns[0][currentIndex];
+    var xValue = self.data.columns[xColumn][currentIndex];
     var xCaption = document.createElement("div");
     xCaption.textContent = new Date(xValue).toDateString().split(" ").slice(0, -1).join(" ").replace(" ", ", ");
     tooltip.appendChild(xCaption);
@@ -225,35 +232,35 @@ Chart.prototype.setMainInteraction = function () {
 
   function renderVRule(chart) {
     var colors = self.settings[self.settings.mode];
-    var overlayCtx = self.overlayCtx;
-    overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
+    var overCtx = self.overCtx;
+    overCtx.clearRect(0, 0, overCtx.canvas.width, overCtx.canvas.height);
     var transform = self.settings.view.transform;
-    overlayCtx.save();
-    overlayCtx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-    overlayCtx.beginPath();
-    var x = self.data.columns[0][currentIndex];
+    overCtx.save();
+    overCtx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
+    overCtx.beginPath();
+    var x = self.data.columns[xColumn][currentIndex];
     var y0 = self.settings.view.transform.minY;
     var y1 = self.settings.view.transform.maxY;
-    overlayCtx.moveTo(x, y0);
-    overlayCtx.lineTo(x, y1);
-    overlayCtx.restore();
-    overlayCtx.strokeStyle = colors.vline;
-    overlayCtx.lineWidth = 1;
-    overlayCtx.stroke();
+    overCtx.moveTo(x, y0);
+    overCtx.lineTo(x, y1);
+    overCtx.restore();
+    overCtx.strokeStyle = colors.vline;
+    overCtx.lineWidth = 1;
+    overCtx.stroke();
 
     self.data.columns.forEach(function (column) {
       var columnId = column[0];
       if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
         var y = column[currentIndex];
         var canvasPoint = applyTransform(x, y, transform);
-        overlayCtx.beginPath();
-        overlayCtx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
+        overCtx.beginPath();
+        overCtx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
         var color = self.data.colors[columnId];
-        overlayCtx.strokeStyle = color;
-        overlayCtx.fillStyle = colors.bg;
-        overlayCtx.lineWidth = 3;
-        overlayCtx.fill();
-        overlayCtx.stroke();
+        overCtx.strokeStyle = color;
+        overCtx.fillStyle = colors.bg;
+        overCtx.lineWidth = 3;
+        overCtx.fill();
+        overCtx.stroke();
       }
     });
   }
@@ -397,9 +404,9 @@ Chart.prototype.calcTransform = function (view, begin, end) {
 
 Chart.prototype.clear = function () {
   var ctx = this.ctx;
-  var overlayCtx = this.overlayCtx;
+  var overCtx = this.overCtx;
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  overlayCtx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  overCtx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   var tooltip = document.getElementById("chart-tooltip-" + this.id);
   if (tooltip) {
     tooltip.style.opacity = 0;
@@ -410,6 +417,7 @@ Chart.prototype.clear = function () {
 Chart.prototype.renderView = function (view, transform) {
   var ctx = this.ctx;
   this.drawLabels(view, transform);
+  var xColumn = this.settings.xColumn;
 
   ctx.save();
   ctx.lineWidth = view.lineWidth;
@@ -422,12 +430,12 @@ Chart.prototype.renderView = function (view, transform) {
     ctx.strokeStyle = this.data.colors[column_key];
     ctx.save();
     ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-    x0 = this.data.columns[0][transform.begin];
+    x0 = this.data.columns[xColumn][transform.begin];
     y0 = column[transform.begin];
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     for (j = transform.begin; j <= transform.end; j += transform.xStep) {
-      x = this.data.columns[0][j];
+      x = this.data.columns[xColumn][j];
       y = column[j];
       ctx.lineTo(x, y);
     }
@@ -441,6 +449,8 @@ Chart.prototype.renderView = function (view, transform) {
 Chart.prototype.drawLabels = function (view, transform) {
   if (!view.labels) { return; }
   var colors = this.settings[this.settings.mode];
+  var xColumn = this.settings.xColumn;
+
   var ctx = this.ctx;
   ctx.save();
   ctx.font = "14px sans-serif";
@@ -476,7 +486,7 @@ Chart.prototype.drawLabels = function (view, transform) {
   var xStep = Math.floor( (transform.end - transform.begin) / view.labels );
   var x = transform.begin;
   while ( x < transform.end) {
-    var value = this.data.columns[0][x];
+    var value = this.data.columns[xColumn][x];
     var labelX = applyTransform(value, 0, transform)[0];
     value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
     ctx.fillText(value, labelX, view.y0 + 10);
