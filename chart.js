@@ -130,6 +130,8 @@ Chart.prototype.setPreviewInteraction = function () {
   ctx.fill("evenodd");
   ctx.restore();
 
+  var threshold = this.settings.total >> 5;
+
   this.over.addEventListener("mousemove", function(e) {
     var rect = e.target.getBoundingClientRect();
     var x = Math.round(e.clientX - rect.left);
@@ -149,7 +151,15 @@ Chart.prototype.setPreviewInteraction = function () {
       if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
         pointerIndex = pointerIndex - 1;
       }
-      console.log(pointerIndex);
+      if ( Math.abs(begin - pointerIndex) <= threshold ) {
+        console.log("near begin");
+      } else if ( Math.abs(end - pointerIndex) <= threshold ) {
+        console.log("near end");
+      } else if (begin < pointerIndex && pointerIndex < end) {
+        console.log("in between");
+      } else {
+        console.log("ouside");
+      }
     }
   });
 
