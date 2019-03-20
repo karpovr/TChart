@@ -65,14 +65,22 @@ function Chart(data, container) {
     yline: "#f2f4f5",
     vline: "#dfe6eb",
     zline: "#ecf0f3",
-    bg: "#fff"
+    bg: "#fff",
+    previewMask: "#eef5f9",
+    previewMaskA: 0.7,
+    previewFrame: "#49b",
+    previewFrameA: 0.2
   };
   settings.night = {
     label: "#546778",
     yline: "#293544",
     vline: "#3b4a5a",
     zline: "#313d4d",
-    bg: "#242f3e"
+    bg: "#242f3e",
+    previewMask: "#1f2936",
+    previewMaskA: 0.7,
+    previewFrame: "#49b",
+    previewFrameA: 0.2
   };
 
   // Listen to mode switch event
@@ -82,7 +90,7 @@ function Chart(data, container) {
     self.settings.mode = e.detail;
     self.drawChart();
   });
-  settings.mode = body.className.indexOf("night") >= 0 ? "night" : "day";
+  settings.mode = body.className.indexOf("night-mode") >= 0 ? "night" : "day";
 
   this.drawLegend();
   this.drawChart();
@@ -95,44 +103,14 @@ Chart.prototype.setPreviewInteraction = function () {
   var ctx = this.overCtx;
   var view = this.settings.view;
   var preview = this.settings.preview;
-  ctx.save();
-  ctx.fillStyle = "#88a";
-  ctx.globalAlpha = 0.1;
-  ctx.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
-  ctx.restore();
-  ctx.stroke();
-
-  var xColumn = this.settings.xColumn;
-  var begin = view.transform.begin;
-  var end = view.transform.end;
-  var xBegin = this.data.columns[xColumn][begin];
-  var xEnd = this.data.columns[xColumn][end];
-  var x0 = applyTransform(xBegin, 0, preview.transform)[0];
-  var x1 = applyTransform(xEnd, 0, preview.transform)[0];
-
-  ctx.clearRect(x0, preview.y0, x1, preview.y1 - preview.y0);
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(x0, preview.y0);
-  ctx.lineTo(x1, preview.y0);
-  ctx.lineTo(x1, preview.y1);
-  ctx.lineTo(x0, preview.y1);
-  ctx.closePath();
-  // Hole
-  ctx.moveTo(x0 + 5, preview.y0 - 1);
-  ctx.lineTo(x1 - 5, preview.y0 - 1);
-  ctx.lineTo(x1 - 5, preview.y1 + 1);
-  ctx.lineTo(x0 + 5, preview.y1 + 1);
-  ctx.closePath();
-  //fill
-  ctx.fillStyle = "#445";
-  ctx.globalAlpha = 0.2;
-  ctx.fill("evenodd");
-  ctx.restore();
 
   var threshold = this.settings.total >> 5;
+  var column = this.data.columns[this.settings.xColumn];
 
-  this.over.addEventListener("mousemove", function(e) {
+  var prevX;
+  var prevY;
+
+  this.over.addEventListener("mousedown", function(e) {
     var rect = e.target.getBoundingClientRect();
     var x = Math.round(e.clientX - rect.left);
     var y = Math.round(e.clientY - rect.top);
@@ -140,8 +118,9 @@ Chart.prototype.setPreviewInteraction = function () {
       self.settings.preview.x0 <= x && x <= self.settings.preview.x1 &&
       self.settings.preview.y1 <= y && y <= self.settings.preview.y0
     ) {
+      prevX = x;
+      prevY = y;
       x = applyTransform(x, y, self.settings.preview.transform, true)[0];
-      var column = self.data.columns[xColumn];
       var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
       if (pointerIndex < 0) {
         pointerIndex = Math.abs(pointerIndex) - 1;
@@ -151,18 +130,122 @@ Chart.prototype.setPreviewInteraction = function () {
       if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
         pointerIndex = pointerIndex - 1;
       }
-      if ( Math.abs(begin - pointerIndex) <= threshold ) {
-        console.log("near begin");
-      } else if ( Math.abs(end - pointerIndex) <= threshold ) {
-        console.log("near end");
-      } else if (begin < pointerIndex && pointerIndex < end) {
-        console.log("in between");
+      if ( Math.abs(view.transform.begin - pointerIndex) <= threshold ) {
+        e.target.addEventListener("mousemove", moveBegin);
+        e.target.addEventListener("mouseup", upBegin);
+      } else if ( Math.abs(view.transform.end - pointerIndex) <= threshold ) {
+        e.target.addEventListener("mousemove", moveEnd);
+        e.target.addEventListener("mouseup", upEnd);
+      } else if (view.transform.begin < pointerIndex && pointerIndex < view.transform.end) {
+        e.target.addEventListener("mousemove", moveFrame);
+        e.target.addEventListener("mouseup", upFrame);
       } else {
         console.log("ouside");
       }
     }
   });
 
+  function move(e, what) {
+    var rect = e.target.getBoundingClientRect();
+    var x = Math.round(e.clientX - rect.left);
+    var y = Math.round(e.clientY - rect.top);
+    var deltaX = x - prevX;
+    var deltaY = y - prevY;
+    prevX = x;
+    prevY = y;
+
+    var oldBeginIndex = self.settings.begin;
+    var oldEndIndex = self.settings.end;
+
+    var chartDeltaX = Math.round(deltaX / preview.transform.xRatio);
+    var chartBeginX = column[self.settings.begin];
+    var chartEndX = column[self.settings.end];
+    var chartBeginIndex, chartEndIndex;
+    if (what === "begin") {
+      chartBeginX += chartDeltaX;
+      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
+      self.settings.begin = chartBeginIndex;
+    } else if (what === "end") {
+      chartEndX += chartDeltaX;
+      chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; })) - 1;
+      self.settings.end = chartEndIndex;
+    } else {
+      chartBeginX += chartDeltaX;
+      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
+      self.settings.end = chartBeginIndex - self.settings.begin + self.settings.end;
+      self.settings.begin = chartBeginIndex;
+    }
+
+    console.log("move", what, deltaX, oldBeginIndex, oldEndIndex, self.settings.begin, self.settings.end);
+
+    self.drawChart();
+  }
+
+  function moveBegin(e) {
+    move(e, "begin");
+  }
+  function upBegin(e) {
+    move(e, "begin");
+    e.target.removeEventListener("mousemove", moveBegin);
+    e.target.removeEventListener("mouseup", upBegin);
+  }
+  function moveEnd(e) {
+    move(e, "end");
+  }
+  function upEnd(e) {
+    move(e, "end");
+    e.target.removeEventListener("mousemove", moveEnd);
+    e.target.removeEventListener("mouseup", upEnd);
+  }
+  function moveFrame(e) {
+    move(e, "frame");
+  }
+  function upFrame(e) {
+    move(e, "frame");
+    e.target.removeEventListener("mousemove", moveFrame);
+    e.target.removeEventListener("mouseup", upFrame);
+  }
+
+};
+
+Chart.prototype.drawPreviewControl = function () {
+  var self = this;
+  var ctx = this.overCtx;
+  var view = this.settings.view;
+  var preview = this.settings.preview;
+  var colors = self.settings[self.settings.mode];
+
+  ctx.save();
+  ctx.fillStyle = colors.previewMask;
+  ctx.globalAlpha = colors.previewMaskA;
+  ctx.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
+  ctx.restore();
+
+  var xColumn = this.settings.xColumn;
+  var begin = view.transform.begin;
+  var end = view.transform.end;
+  var xBegin = this.data.columns[xColumn][begin];
+  var xEnd = this.data.columns[xColumn][end];
+  var x0 = applyTransform(xBegin, 0, preview.transform)[0];
+  var x1 = applyTransform(xEnd, 0, preview.transform)[0];
+
+  ctx.clearRect(x0, preview.y0, x1 - x0, preview.y1 - preview.y0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x0, preview.y0);
+  ctx.lineTo(x1, preview.y0);
+  ctx.lineTo(x1, preview.y1);
+  ctx.lineTo(x0, preview.y1);
+  ctx.closePath();
+  ctx.moveTo(x0 + 5, preview.y0 - 1);
+  ctx.lineTo(x1 - 5, preview.y0 - 1);
+  ctx.lineTo(x1 - 5, preview.y1 + 1);
+  ctx.lineTo(x0 + 5, preview.y1 + 1);
+  ctx.closePath();
+  ctx.fillStyle = colors.previewFrame;
+  ctx.globalAlpha = colors.previewFrameA;
+  ctx.fill("evenodd");
+  ctx.restore();
 };
 
 // Set interaction with chart
@@ -242,8 +325,9 @@ Chart.prototype.setMainInteraction = function () {
 
   function renderVRule(chart) {
     var colors = self.settings[self.settings.mode];
+    var view = self.settings.view;
     var overCtx = self.overCtx;
-    overCtx.clearRect(0, 0, overCtx.canvas.width, overCtx.canvas.height);
+    overCtx.clearRect(view.x0, view.y1, view.x1, view.y0);
     var transform = self.settings.view.transform;
     overCtx.save();
     overCtx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
@@ -258,6 +342,7 @@ Chart.prototype.setMainInteraction = function () {
     overCtx.lineWidth = 1;
     overCtx.stroke();
 
+    overCtx.save();
     self.data.columns.forEach(function (column) {
       var columnId = column[0];
       if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
@@ -273,6 +358,7 @@ Chart.prototype.setMainInteraction = function () {
         overCtx.stroke();
       }
     });
+    overCtx.restore();
   }
 };
 
@@ -319,10 +405,11 @@ Chart.prototype.drawChart = function () {
 
   function renderViews(chart) {
     chart.clear();
-    chart.renderView(chart.settings.preview, actualPreviewTransform);
     chart.renderView(chart.settings.view, actualViewTransform);
-    chart.settings.preview.transform = actualPreviewTransform;
     chart.settings.view.transform = actualViewTransform;
+    chart.renderView(chart.settings.preview, actualPreviewTransform);
+    chart.settings.preview.transform = actualPreviewTransform;
+    chart.drawPreviewControl();
   }
 };
 
@@ -366,6 +453,7 @@ Chart.prototype.drawLegend = function () {
         });
       }
       self.drawChart();
+      self.drawPreviewControl();
     });
   });
 };
@@ -520,6 +608,14 @@ function applyTransform(x, y, transform, reverse) {
     ];
   }
   return result;
+}
+
+function canvas2view (x, y, view) {
+  return applyTransform(x, y, view.transform, true);
+}
+
+function view2canvas (x, y, view) {
+  return applyTransform(x, y, view.transform, false);
 }
 
 // Binary search helper
