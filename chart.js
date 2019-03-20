@@ -163,28 +163,31 @@ Chart.prototype.setPreviewInteraction = function () {
     if (what === "begin") {
       if (
         self.previewFrame.x0 + deltaX < preview.x0 ||
-        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 5)
+        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 3)
       ) {
         return;
       }
       self.previewFrame.x0 += deltaX;
       chartBeginX = applyTransform(self.previewFrame.x0, 0, preview.transform, true)[0];
-      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
+      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.begin = chartBeginIndex;
-
-      console.log(self.settings.begin);
-
+      if (self.settings.begin < 1) {
+        self.settings.begin = 1;
+      }
     } else if (what === "end") {
       if (
         self.previewFrame.x1 + deltaX > preview.x1 ||
-        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 5)
+        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 3)
       ) {
         return;
       }
       self.previewFrame.x1 += deltaX;
       chartEndX = applyTransform(self.previewFrame.x1, 0, preview.transform, true)[0];
-      chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; })) - 1;
+      chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; }));
       self.settings.end = chartEndIndex;
+      if (self.settings.end > self.settings.total) {
+        self.settings.end = self.settings.total;
+      }
     } else {
       if (
         self.previewFrame.x0 + deltaX < preview.x0 ||
@@ -195,9 +198,15 @@ Chart.prototype.setPreviewInteraction = function () {
       self.previewFrame.x0 += deltaX;
       self.previewFrame.x1 += deltaX;
       chartBeginX = applyTransform(self.previewFrame.x0, 0, preview.transform, true)[0];
-      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
+      chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.end = chartBeginIndex - self.settings.begin + self.settings.end;
       self.settings.begin = chartBeginIndex;
+      if (self.settings.begin < 1) {
+        self.settings.begin = 1;
+      }
+      if (self.settings.end > self.settings.total) {
+        self.settings.end = self.settings.total;
+      }
     }
     if (self.settings.begin !== prevBegin || self.settings.end !== prevEnd) {
       self.drawChart();
