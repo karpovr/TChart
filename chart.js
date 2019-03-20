@@ -92,8 +92,8 @@ function Chart(data, container) {
   });
   settings.mode = body.className.indexOf("night-mode") >= 0 ? "night" : "day";
 
-  this.drawLegend();
   this.drawChart();
+  this.drawLegend();
   this.setMainInteraction();
   this.setPreviewInteraction();
 }
@@ -154,31 +154,54 @@ Chart.prototype.setPreviewInteraction = function () {
     prevX = x;
     prevY = y;
 
-    var oldBeginIndex = self.settings.begin;
-    var oldEndIndex = self.settings.end;
-
-    var chartDeltaX = Math.round(deltaX / preview.transform.xRatio);
-    var chartBeginX = column[self.settings.begin];
-    var chartEndX = column[self.settings.end];
+    var prevBegin = self.settings.begin;
+    var prevEnd = self.settings.end;
+    var chartBeginX = column[prevBegin];
+    var chartEndX = column[prevEnd];
     var chartBeginIndex, chartEndIndex;
+
     if (what === "begin") {
-      chartBeginX += chartDeltaX;
+      if (
+        self.previewFrame.x0 + deltaX < preview.x0 ||
+        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 5)
+      ) {
+        return;
+      }
+      self.previewFrame.x0 += deltaX;
+      chartBeginX = applyTransform(self.previewFrame.x0, 0, preview.transform, true)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
       self.settings.begin = chartBeginIndex;
+
+      console.log(self.settings.begin);
+
     } else if (what === "end") {
-      chartEndX += chartDeltaX;
+      if (
+        self.previewFrame.x1 + deltaX > preview.x1 ||
+        Math.abs(self.previewFrame.x1 - self.previewFrame.x0) < (preview.width >> 5)
+      ) {
+        return;
+      }
+      self.previewFrame.x1 += deltaX;
+      chartEndX = applyTransform(self.previewFrame.x1, 0, preview.transform, true)[0];
       chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; })) - 1;
       self.settings.end = chartEndIndex;
     } else {
-      chartBeginX += chartDeltaX;
+      if (
+        self.previewFrame.x0 + deltaX < preview.x0 ||
+        self.previewFrame.x1 + deltaX > preview.x1
+      ) {
+        return;
+      }
+      self.previewFrame.x0 += deltaX;
+      self.previewFrame.x1 += deltaX;
+      chartBeginX = applyTransform(self.previewFrame.x0, 0, preview.transform, true)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; })) - 1;
       self.settings.end = chartBeginIndex - self.settings.begin + self.settings.end;
       self.settings.begin = chartBeginIndex;
     }
-
-    console.log("move", what, deltaX, oldBeginIndex, oldEndIndex, self.settings.begin, self.settings.end);
-
-    self.drawChart();
+    if (self.settings.begin !== prevBegin || self.settings.end !== prevEnd) {
+      self.drawChart();
+    }
   }
 
   function moveBegin(e) {
@@ -221,13 +244,23 @@ Chart.prototype.drawPreviewControl = function () {
   ctx.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
   ctx.restore();
 
-  var xColumn = this.settings.xColumn;
-  var begin = view.transform.begin;
-  var end = view.transform.end;
-  var xBegin = this.data.columns[xColumn][begin];
-  var xEnd = this.data.columns[xColumn][end];
-  var x0 = applyTransform(xBegin, 0, preview.transform)[0];
-  var x1 = applyTransform(xEnd, 0, preview.transform)[0];
+  var x0, x1;
+
+  if (!this.previewFrame) {
+    var xColumn = this.settings.xColumn;
+    var begin = view.transform.begin;
+    var end = view.transform.end;
+    var xBegin = this.data.columns[xColumn][begin];
+    var xEnd = this.data.columns[xColumn][end];
+    x0 = applyTransform(xBegin, 0, preview.transform)[0];
+    x1 = applyTransform(xEnd, 0, preview.transform)[0];
+    this.previewFrame = {
+      x0: x0,
+      x1: x1,
+    };
+  }
+  x0 = this.previewFrame.x0;
+  x1 = this.previewFrame.x1;
 
   ctx.clearRect(x0, preview.y0, x1 - x0, preview.y1 - preview.y0);
   ctx.save();
@@ -386,20 +419,23 @@ Chart.prototype.drawChart = function () {
 
   var steps = this.settings.animationSteps;
   var step = 1;
-  requestAnimationFrame(renderStep);
+  if (this.animationRequest) {
+    cancelAnimationFrame(this.animationRequest);
+  }
+  this.animationRequest = requestAnimationFrame(renderStep);
 
   function renderStep() {
     for (var key in actualPreviewTransform) {
       actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
       actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * step;
       if (key === "begin" || key === "end") {
-        actualPreviewTransform[key] = actualPreviewTransform[key] >> 0;
-        actualViewTransform[key] = actualViewTransform[key] >> 0;
+        actualPreviewTransform[key] = Math.round(actualPreviewTransform[key]);
+        actualViewTransform[key] = Math.round(actualViewTransform[key]);
       }
     }
     renderViews(self);
     if (++step <= steps) {
-      requestAnimationFrame(renderStep);
+      self.animationRequest = requestAnimationFrame(renderStep);
     }
   }
 
@@ -453,7 +489,6 @@ Chart.prototype.drawLegend = function () {
         });
       }
       self.drawChart();
-      self.drawPreviewControl();
     });
   });
 };
