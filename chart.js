@@ -121,6 +121,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     if (e.type === "mousedown") {
       clientX = e.clientX;
       clientY = e.clientY;
+      e.preventDefault();
     } else {
       clientX = e.changedTouches[0].clientX;
       clientY = e.changedTouches[0].clientY;
@@ -131,21 +132,20 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       preview.x0 <= x && x <= preview.x1 &&
       preview.y1 <= y && y <= preview.y0
     ) {
-      e.preventDefault();
       prevX = x;
       if ( Math.abs(x - previewFrame.x0) <= threshold ) {
-        over.addEventListener("mousemove", moveBegin);
-        over.addEventListener("touchmove", moveBegin);
+        document.addEventListener("mousemove", moveBegin);
+        document.addEventListener("touchmove", moveBegin);
         document.addEventListener("mouseup", upBegin);
         document.addEventListener("touchend", upBegin);
       } else if ( Math.abs(x - previewFrame.x1) <= threshold ) {
-        over.addEventListener("mousemove", moveEnd);
-        over.addEventListener("touchmove", moveEnd);
+        document.addEventListener("mousemove", moveEnd);
+        document.addEventListener("touchmove", moveEnd);
         document.addEventListener("mouseup", upEnd);
         document.addEventListener("touchend", upEnd);
       } else if (previewFrame.x0 < x && x < previewFrame.x1) {
-        over.addEventListener("mousemove", moveFrame);
-        over.addEventListener("touchmove", moveFrame);
+        document.addEventListener("mousemove", moveFrame);
+        document.addEventListener("touchmove", moveFrame);
         document.addEventListener("mouseup", upFrame);
         document.addEventListener("touchend", upFrame);
       }
@@ -153,12 +153,12 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   }
 
   function move(e, what) {
-    e.preventDefault();
-    var rect = e.target.getBoundingClientRect();
+    var rect = over.getBoundingClientRect();
     var clientX, clientY;
     if (e.type === "mousemove") {
       clientX = e.clientX;
       clientY = e.clientY;
+      e.preventDefault();
     } else {
       clientX = e.changedTouches[0].clientX;
       clientY = e.changedTouches[0].clientY;
@@ -229,8 +229,8 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     move(e, "begin");
   }
   function upBegin(e) {
-    over.removeEventListener("mousemove", moveBegin);
-    over.removeEventListener("touchmove", moveBegin);
+    document.removeEventListener("mousemove", moveBegin);
+    document.removeEventListener("touchmove", moveBegin);
     document.removeEventListener("mouseup", upBegin);
     document.removeEventListener("touchend", upBegin);
   }
@@ -238,8 +238,8 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     move(e, "end");
   }
   function upEnd(e) {
-    over.removeEventListener("mousemove", moveEnd);
-    over.removeEventListener("touchmove", moveEnd);
+    document.removeEventListener("mousemove", moveEnd);
+    document.removeEventListener("touchmove", moveEnd);
     document.removeEventListener("mouseup", upEnd);
     document.removeEventListener("touchend", upEnd);
   }
@@ -247,8 +247,8 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     move(e, "frame");
   }
   function upFrame(e) {
-    over.removeEventListener("mousemove", moveFrame);
-    over.removeEventListener("touchmove", moveFrame);
+    document.removeEventListener("mousemove", moveFrame);
+    document.removeEventListener("touchmove", moveFrame);
     document.removeEventListener("mouseup", upFrame);
     document.removeEventListener("touchend", upFrame);
   }
@@ -385,7 +385,12 @@ Chart.prototype.setMainInteraction = function setMainInteraction() {
     left += 15;
     tooltip.style.left = "";
     tooltip.style.right = "";
-    if ( left + width <= self.settings.view.x1 ) {
+
+    //if ( left + width > self.settings.view.x1 && ) {
+    //
+    //} else
+
+    if ( left + width <= self.settings.view.x1 || width >= left - 30) {
       tooltip.style.left = left + "px";
     } else {
       tooltip.style.right = self.settings.view.x1 - left + 30 + "px";
