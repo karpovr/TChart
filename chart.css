@@ -42,7 +42,7 @@ body {
   display: inline-block;
   vertical-align: top;
 }
-.chart canvas.overlay {
+.chart .view-overlay, .chart .preview-overlay {
   position: absolute;
   top: 0;
   left: 0;

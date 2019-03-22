@@ -7,25 +7,46 @@
  */
 
 function Chart(data, container, width, height) {
-  var canvas = document.createElement("canvas");
-  canvas.width = width || 350;
-  canvas.height = height || 500;
-  var ctx = canvas.getContext("2d");
-  container.appendChild(canvas);
+  width = width || 400;
+  height = height || 600;
+  var view = document.createElement("canvas");
+  view.width = width;
+  view.height = Math.round(height / 10 * 8);
+  var viewCtx = view.getContext("2d");
+  container.appendChild(view);
 
-  var over = document.createElement("canvas");
-  over.className = "overlay";
-  container.appendChild(over);
-  over.width = canvas.width;
-  over.height = canvas.height;
-  var overCtx = over.getContext("2d");
+  var overView = document.createElement("canvas");
+  overView.className = "view-overlay";
+  overView.width = view.width;
+  overView.height = view.height;
+  container.appendChild(overView);
+  var overViewCtx = overView.getContext("2d");
+
+  var preview = document.createElement("canvas");
+  preview.width = width;
+  preview.height = Math.round(height / 10);
+  preview.style.top = view.height + preview.height;
+  var previewCtx = preview.getContext("2d");
+  container.appendChild(preview);
+
+  var overPreview = document.createElement("canvas");
+  overPreview.className = "preview-overlay";
+  overPreview.width = preview.width;
+  overPreview.height = preview.height;
+  overPreview.style.top = preview.style.top;
+  container.appendChild(overPreview);
+  var overPreviewCtx = overPreview.getContext("2d");
 
   this.id = Date.now();
   this.container = container;
-  this.canvas = canvas;
-  this.over = over;
-  this.ctx = ctx;
-  this.overCtx = overCtx;
+  this.view = view;
+  this.viewCtx = viewCtx;
+  this.overView = overView;
+  this.overViewCtx = overViewCtx;
+  this.preview = preview;
+  this.previewCtx = previewCtx;
+  this.overPreview = overPreview;
+  this.overPreviewCtx = overPreviewCtx;
   this.data = data;
 
   var settings = {};
@@ -41,22 +62,10 @@ function Chart(data, container, width, height) {
   settings.begin = settings.total - (settings.total >> 2);
   settings.end = settings.total;
   settings.preview = {
-    x0: 0,
-    y0: canvas.height,
-    x1: canvas.width,
-    y1: Math.floor(canvas.height - canvas.height / 10),
-    width: canvas.width,
-    height: Math.floor(canvas.height / 10),
     lineWidth: 1,
     labels: 0
   };
   settings.view = {
-    x0: 0,
-    y0: canvas.height - 2 * settings.preview.height,
-    x1: canvas.width,
-    y1: 0,
-    width: canvas.width,
-    height: canvas.height - 2 * settings.preview.height,
     lineWidth: 3,
     labels: 5
   };
@@ -101,9 +110,7 @@ function Chart(data, container, width, height) {
 Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   //console.log( arguments.callee.name );
   var self = this;
-  var over = this.over;
-  var ctx = this.overCtx;
-  var view = this.settings.view;
+  var overPreview = this.overPreview;
   var preview = this.settings.preview;
   var previewFrame = this.previewFrame;
 
