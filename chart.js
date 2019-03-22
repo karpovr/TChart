@@ -386,10 +386,6 @@ Chart.prototype.setMainInteraction = function setMainInteraction() {
     tooltip.style.left = "";
     tooltip.style.right = "";
 
-    //if ( left + width > self.settings.view.x1 && ) {
-    //
-    //} else
-
     if ( left + width <= self.settings.view.x1 || width >= left - 30) {
       tooltip.style.left = left + "px";
     } else {
@@ -703,7 +699,7 @@ function view2canvas (x, y, view) {
 
 // Binary search helper
 function binarySearch(array, value, compare) {
-  var i = 0, j, k = array.length - 1, cmp_res;
+  var i = 1, j, k = array.length - 1, cmp_res;
   while (i <= k) {
     j = (k + i) >> 1;
     cmp_res = compare(value, array[j]);
