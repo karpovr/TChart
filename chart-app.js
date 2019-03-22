@@ -105,12 +105,12 @@ function ChartsApp() {
     chartsContainer.innerHTML = "";
     var width = 350;
     var height = 500;
-    data.forEach(function (item) {
-      var chart = document.createElement("div");
-      chart.className = "chart";
-      chartsContainer.appendChild(chart);
-      var chartItem = new Chart(item, chart);
-      window.charts = (window.charts || []).concat(chartItem);
+    data.forEach(function (data) {
+      var chartContainer = document.createElement("div");
+      chartContainer.className = "chart";
+      chartsContainer.appendChild(chartContainer);
+      var chart = new Chart(data, chartContainer, width, height);
+      window.charts = (window.charts || []).concat(chart);
     });
   }
 }

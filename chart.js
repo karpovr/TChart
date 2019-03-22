@@ -6,10 +6,10 @@
  * Date: 2019-03-11T09:59Z
  */
 
-function Chart(data, container) {
+function Chart(data, container, width, height) {
   var canvas = document.createElement("canvas");
-  canvas.width = 350;
-  canvas.height = 500;
+  canvas.width = width || 350;
+  canvas.height = height || 500;
   var ctx = canvas.getContext("2d");
   container.appendChild(canvas);
 
