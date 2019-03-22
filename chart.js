@@ -10,6 +10,7 @@ function Chart(data, container, width, height) {
   width = width || 400;
   height = height || 600;
   var view = document.createElement("canvas");
+  view.className = "view";
   view.width = width;
   view.height = Math.round(height / 10 * 8);
   var viewCtx = view.getContext("2d");
@@ -25,7 +26,8 @@ function Chart(data, container, width, height) {
   var preview = document.createElement("canvas");
   preview.width = width;
   preview.height = Math.round(height / 10);
-  preview.style.top = view.height + preview.height;
+  preview.className = "preview";
+  preview.style.top = view.height + "px";
   var previewCtx = preview.getContext("2d");
   container.appendChild(preview);
 
@@ -103,15 +105,15 @@ function Chart(data, container, width, height) {
 
   this.drawChart();
   this.drawLegend();
-  this.setMainInteraction();
+  this.setViewInteraction();
   this.setPreviewInteraction();
 }
 
 Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   //console.log( arguments.callee.name );
   var self = this;
+  var preview = this.preview;
   var overPreview = this.overPreview;
-  var preview = this.settings.preview;
   var previewFrame = this.previewFrame;
 
   var threshold = 10;
@@ -119,59 +121,48 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
 
   var prevX;
 
-  over.addEventListener("mousedown", setupMove);
-  over.addEventListener("touchstart", setupMove);
+  overPreview.addEventListener("mousedown", setupMove);
+  overPreview.addEventListener("touchstart", setupMove);
 
   function setupMove(e) {
+    e.preventDefault();
     var rect = e.target.getBoundingClientRect();
-    var clientX, clientY;
+    var clientX;
     if (e.type === "mousedown") {
       clientX = e.clientX;
-      clientY = e.clientY;
-      e.preventDefault();
     } else {
       clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
     }
     var x = Math.round(clientX - rect.left);
-    var y = Math.round(clientY - rect.top);
-    if (
-      preview.x0 <= x && x <= preview.x1 &&
-      preview.y1 <= y && y <= preview.y0
-    ) {
-      prevX = x;
-      if ( Math.abs(x - previewFrame.x0) <= threshold ) {
-        document.addEventListener("mousemove", moveBegin);
-        document.addEventListener("touchmove", moveBegin);
-        document.addEventListener("mouseup", upBegin);
-        document.addEventListener("touchend", upBegin);
-      } else if ( Math.abs(x - previewFrame.x1) <= threshold ) {
-        document.addEventListener("mousemove", moveEnd);
-        document.addEventListener("touchmove", moveEnd);
-        document.addEventListener("mouseup", upEnd);
-        document.addEventListener("touchend", upEnd);
-      } else if (previewFrame.x0 < x && x < previewFrame.x1) {
-        document.addEventListener("mousemove", moveFrame);
-        document.addEventListener("touchmove", moveFrame);
-        document.addEventListener("mouseup", upFrame);
-        document.addEventListener("touchend", upFrame);
-      }
+    prevX = x;
+    if ( Math.abs(x - previewFrame.x0) <= threshold ) {
+      document.addEventListener("mousemove", moveBegin);
+      document.addEventListener("touchmove", moveBegin);
+      document.addEventListener("mouseup", upBegin);
+      document.addEventListener("touchend", upBegin);
+    } else if ( Math.abs(x - previewFrame.x1) <= threshold ) {
+      document.addEventListener("mousemove", moveEnd);
+      document.addEventListener("touchmove", moveEnd);
+      document.addEventListener("mouseup", upEnd);
+      document.addEventListener("touchend", upEnd);
+    } else if (previewFrame.x0 < x && x < previewFrame.x1) {
+      document.addEventListener("mousemove", moveFrame);
+      document.addEventListener("touchmove", moveFrame);
+      document.addEventListener("mouseup", upFrame);
+      document.addEventListener("touchend", upFrame);
     }
   }
 
   function move(e, what) {
-    var rect = over.getBoundingClientRect();
-    var clientX, clientY;
+    e.preventDefault();
+    var rect = overPreview.getBoundingClientRect();
+    var clientX;
     if (e.type === "mousemove") {
       clientX = e.clientX;
-      clientY = e.clientY;
-      e.preventDefault();
     } else {
       clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
     }
     var x = Math.round(clientX - rect.left);
-    var y = Math.round(clientY - rect.top);
     var deltaX = x - prevX;
     prevX = x;
 
@@ -182,10 +173,10 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     if (what === "begin") {
       if (Math.abs(previewFrame.x1 - previewFrame.x0 - deltaX) < threshold * 4) { return; }
       previewFrame.x0 += deltaX;
-      if (previewFrame.x0 < preview.x0) {
-        previewFrame.x0 = preview.x0;
+      if (previewFrame.x0 < 0) {
+        previewFrame.x0 = 0;
       }
-      chartBeginX = applyTransform(previewFrame.x0, 0, preview.transform, true)[0];
+      chartBeginX = applyTransform(previewFrame.x0, 0, preview, true)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.begin = chartBeginIndex;
       if (self.settings.begin < 1) {
@@ -193,11 +184,11 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       }
     } else if (what === "end") {
       if ( Math.abs(previewFrame.x1 + deltaX - previewFrame.x0) < threshold * 4 ) { return; }
-      self.previewFrame.x1 += deltaX;
-      if (previewFrame.x1 > preview.x1) {
-        previewFrame.x1 = preview.x1;
+      previewFrame.x1 += deltaX;
+      if (previewFrame.x1 > preview.width) {
+        previewFrame.x1 = preview.width;
       }
-      chartEndX = applyTransform(previewFrame.x1, 0, preview.transform, true)[0];
+      chartEndX = applyTransform(previewFrame.x1, 0, preview, true)[0];
       chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; }));
       self.settings.end = chartEndIndex;
       if (self.settings.end > self.settings.total) {
@@ -205,18 +196,18 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       }
     } else {
       var previewFrameWidth = previewFrame.x1 - previewFrame.x0;
-      if (previewFrame.x0 + deltaX < preview.x0) {
-        previewFrame.x0 = preview.x0;
-        previewFrame.x1 = preview.x0 + previewFrameWidth;
-      } else if (previewFrame.x1 + deltaX > preview.x1) {
-        previewFrame.x1 = preview.x1;
-        previewFrame.x0 = preview.x1 - previewFrameWidth;
+      if (previewFrame.x0 + deltaX < 0) {
+        previewFrame.x0 = 0;
+        previewFrame.x1 = previewFrameWidth;
+      } else if (previewFrame.x1 + deltaX > preview.width) {
+        previewFrame.x1 = preview.width;
+        previewFrame.x0 = preview.width - previewFrameWidth;
       } else {
         previewFrame.x0 += deltaX;
         previewFrame.x1 += deltaX;
       }
       var indexDelta = self.settings.end - self.settings.begin;
-      chartBeginX = applyTransform(previewFrame.x0, 0, preview.transform, true)[0];
+      chartBeginX = applyTransform(previewFrame.x0, 0, preview, true)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.begin = chartBeginIndex;
       if (self.settings.begin < 1) {
@@ -264,27 +255,26 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
 Chart.prototype.drawPreviewControl = function drawPreviewControl() {
   //console.log( arguments.callee.name );
   var self = this;
-  var ctx = this.overCtx;
-  var view = this.settings.view;
-  var preview = this.settings.preview;
-  var colors = self.settings[self.settings.mode];
+  var ctx = this.overPreviewCtx;
+  var preview = this.preview;
+  var colors = this.settings[this.settings.mode];
 
   ctx.save();
   ctx.fillStyle = colors.previewMask;
   ctx.globalAlpha = colors.previewMaskA;
-  ctx.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
+  ctx.fillRect(0, 0, preview.width, preview.height);
   ctx.restore();
 
   var x0, x1;
 
   if (!this.previewFrame) {
     var xColumn = this.settings.xColumn;
-    var begin = view.transform.begin;
-    var end = view.transform.end;
+    var begin = this.settings.begin;
+    var end = this.settings.end;
     var xBegin = this.data.columns[xColumn][begin];
     var xEnd = this.data.columns[xColumn][end];
-    x0 = applyTransform(xBegin, 0, preview.transform)[0];
-    x1 = applyTransform(xEnd, 0, preview.transform)[0];
+    x0 = applyTransform(xBegin, 0, preview)[0];
+    x1 = applyTransform(xEnd, 0, preview)[0];
     this.previewFrame = {
       x0: x0,
       x1: x1,
@@ -293,18 +283,18 @@ Chart.prototype.drawPreviewControl = function drawPreviewControl() {
   x0 = this.previewFrame.x0;
   x1 = this.previewFrame.x1;
 
-  ctx.clearRect(x0, preview.y0, x1 - x0, preview.y1 - preview.y0);
+  ctx.clearRect(x0, 0, x1 - x0, preview.height);
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(x0, preview.y0);
-  ctx.lineTo(x1, preview.y0);
-  ctx.lineTo(x1, preview.y1);
-  ctx.lineTo(x0, preview.y1);
+  ctx.moveTo(x0, preview.height);
+  ctx.lineTo(x1, preview.height);
+  ctx.lineTo(x1, 0);
+  ctx.lineTo(x0, 0);
   ctx.closePath();
-  ctx.moveTo(x0 + 5, preview.y0 - 1);
-  ctx.lineTo(x1 - 5, preview.y0 - 1);
-  ctx.lineTo(x1 - 5, preview.y1 + 1);
-  ctx.lineTo(x0 + 5, preview.y1 + 1);
+  ctx.moveTo(x0 + 5, preview.height - 1);
+  ctx.lineTo(x1 - 5, preview.height - 1);
+  ctx.lineTo(x1 - 5, 1);
+  ctx.lineTo(x0 + 5, 1);
   ctx.closePath();
   ctx.fillStyle = colors.previewFrame;
   ctx.globalAlpha = colors.previewFrameA;
@@ -312,48 +302,15 @@ Chart.prototype.drawPreviewControl = function drawPreviewControl() {
   ctx.restore();
 };
 
-// Set interaction with chart
-Chart.prototype.setMainInteraction = function setMainInteraction() {
+Chart.prototype.setViewInteraction = function setViewInteraction() {
   //console.log( arguments.callee.name );
   var self = this;
   var xColumn = this.settings.xColumn;
+  var column = this.data.columns[xColumn];
+  var view = this.view;
   var currentIndex;
-  this.over.addEventListener("mousemove", showTooltip);
-  this.over.addEventListener("touchmove", showTooltip);
-
-  function showTooltip(e) {
-    var rect = e.target.getBoundingClientRect();
-    var clientX, clientY;
-    if (e.type === "mousemove") {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    } else {
-      clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
-    }
-    var x = Math.round(clientX - rect.left);
-    var y = Math.round(clientY - rect.top);
-    if (
-      self.settings.view.x0 <= x && x <= self.settings.view.x1 &&
-      self.settings.view.y1 <= y && y <= self.settings.view.y0
-    ) {
-      x = applyTransform(x, y, self.settings.view.transform, true)[0];
-      var column = self.data.columns[xColumn];
-      var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
-      if (pointerIndex < 0) {
-        pointerIndex = Math.abs(pointerIndex) - 1;
-      }
-      var x1 = column[pointerIndex];
-      var x2 = column[pointerIndex - 1];
-      if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
-        pointerIndex = pointerIndex - 1;
-      }
-      if (pointerIndex === currentIndex) { return; }
-      currentIndex = pointerIndex;
-      renderRuler(currentIndex);
-      renderTooltip(currentIndex);
-    }
-  }
+  this.overView.addEventListener("mousemove", showInfo);
+  this.overView.addEventListener("touchmove", showInfo);
 
   var tooltip = document.createElement("div");
   tooltip.className = "chart-tooltip";
@@ -361,9 +318,34 @@ Chart.prototype.setMainInteraction = function setMainInteraction() {
   tooltip.style.opacity = "0";
   this.container.appendChild(tooltip);
 
+  function showInfo(e) {
+    var rect = e.target.getBoundingClientRect();
+    var clientX;
+    if (e.type === "mousemove") {
+      clientX = e.clientX;
+    } else {
+      clientX = e.changedTouches[0].clientX;
+    }
+    var x = Math.round(clientX - rect.left);
+    x = Math.round(applyTransform(x, 0, view, true)[0]);
+    var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
+    if (pointerIndex < 0) {
+      pointerIndex = Math.abs(pointerIndex) - 1;
+    }
+    var x1 = column[pointerIndex];
+    var x2 = column[pointerIndex - 1];
+    if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
+      pointerIndex = pointerIndex - 1;
+    }
+    if (pointerIndex === currentIndex) { return; }
+    currentIndex = pointerIndex;
+    renderRuler(currentIndex);
+    renderTooltip(currentIndex);
+  }
+
   function renderTooltip(currentIndex) {
     tooltip.innerHTML = "";
-    var xValue = self.data.columns[xColumn][currentIndex];
+    var xValue = column[currentIndex];
     var xCaption = document.createElement("div");
     xCaption.textContent = new Date(xValue).toDateString().split(" ").slice(0, -1).join(" ").replace(" ", ", ");
     tooltip.appendChild(xCaption);
@@ -388,54 +370,54 @@ Chart.prototype.setMainInteraction = function setMainInteraction() {
     });
     tooltip.style.opacity = "1";
     var width = tooltip.offsetWidth;
-    var left = Math.round(applyTransform(xValue, 0, self.settings.view.transform)[0]);
+    var left = Math.round(applyTransform(xValue, 0, view)[0]);
     left += 15;
     tooltip.style.left = "";
     tooltip.style.right = "";
 
-    if ( left + width <= self.settings.view.x1 || width >= left - 30) {
+    if ( left + width <= view.width || width >= left - 30) {
       tooltip.style.left = left + "px";
     } else {
-      tooltip.style.right = self.settings.view.x1 - left + 30 + "px";
+      tooltip.style.right = view.width - left + 30 + "px";
     }
   }
 
   function renderRuler(currentIndex) {
     var colors = self.settings[self.settings.mode];
-    var view = self.settings.view;
-    var overCtx = self.overCtx;
-    overCtx.clearRect(view.x0, view.y1, view.x1, view.y0);
-    var transform = self.settings.view.transform;
-    overCtx.save();
-    overCtx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-    overCtx.beginPath();
+    var view = self.view;
+    var ctx = self.overViewCtx;
+    ctx.clearRect(0, 0, view.width, view.height);
+    var transform = view.transform;
+    ctx.save();
+    ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
+    ctx.beginPath();
     var x = self.data.columns[xColumn][currentIndex];
-    var y0 = self.settings.view.transform.minY;
-    var y1 = self.settings.view.transform.maxY;
-    overCtx.moveTo(x, y0);
-    overCtx.lineTo(x, y1);
-    overCtx.restore();
-    overCtx.strokeStyle = colors.vline;
-    overCtx.lineWidth = 1;
-    overCtx.stroke();
+    var y0 = view.transform.minY;
+    var y1 = view.transform.maxY;
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.restore();
+    ctx.strokeStyle = colors.vline;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-    overCtx.save();
+    ctx.save();
     self.data.columns.forEach(function (column) {
       var columnId = column[0];
       if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
         var y = column[currentIndex];
-        var canvasPoint = applyTransform(x, y, transform);
-        overCtx.beginPath();
-        overCtx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
+        var canvasPoint = applyTransform(x, y, view);
+        ctx.beginPath();
+        ctx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
         var color = self.data.colors[columnId];
-        overCtx.strokeStyle = color;
-        overCtx.fillStyle = colors.bg;
-        overCtx.lineWidth = 3;
-        overCtx.fill();
-        overCtx.stroke();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = colors.bg;
+        ctx.lineWidth = 3;
+        ctx.fill();
+        ctx.stroke();
       }
     });
-    overCtx.restore();
+    ctx.restore();
   }
 };
 
@@ -443,11 +425,11 @@ Chart.prototype.setMainInteraction = function setMainInteraction() {
 Chart.prototype.drawChart = function drawChart() {
   //console.log( arguments.callee.name );
   var self = this;
-  var formerPreviewTransform = this.settings.preview.transform;
-  var formerViewTransform = this.settings.view.transform;
+  var formerPreviewTransform = this.preview.transform;
+  var formerViewTransform = this.view.transform;
 
-  var actualPreviewTransform = this.calcTransform(this.settings.preview, 1, this.settings.total);
-  var actualViewTransform = this.calcTransform(this.settings.view, this.settings.begin, this.settings.end);
+  var actualPreviewTransform = this.calcTransform(this.preview, 1, this.settings.total);
+  var actualViewTransform = this.calcTransform(this.view, this.settings.begin, this.settings.end);
 
   if (!actualPreviewTransform) {
     this.clear();
@@ -458,8 +440,8 @@ Chart.prototype.drawChart = function drawChart() {
     return;
   }
 
-  var previewTransformDelta = this.calcTransformDelta(actualPreviewTransform, formerPreviewTransform);
-  var viewTransformDelta = this.calcTransformDelta(actualViewTransform, formerViewTransform);
+  var previewTransformDelta = calcTransformDelta(actualPreviewTransform, formerPreviewTransform);
+  var viewTransformDelta = calcTransformDelta(actualViewTransform, formerViewTransform);
 
   var steps = this.settings.animationSteps;
   var step = 1;
@@ -485,30 +467,29 @@ Chart.prototype.drawChart = function drawChart() {
 
   function renderViews(chart) {
     chart.clear();
-    chart.renderView(chart.settings.view, actualViewTransform);
-    chart.settings.view.transform = actualViewTransform;
-    chart.renderView(chart.settings.preview, actualPreviewTransform);
-    chart.settings.preview.transform = actualPreviewTransform;
+    chart.renderView(chart.view, actualViewTransform);
+    chart.view.transform = actualViewTransform;
+    chart.renderView(chart.preview, actualPreviewTransform);
+    chart.preview.transform = actualPreviewTransform;
     chart.drawPreviewControl();
   }
-};
 
-Chart.prototype.calcTransformDelta = function calcTransformDelta(actual, former) {
-  //console.log( arguments.callee.name );
-  var delta = {};
-  for (var key in actual) {
-    delta[key] = actual[key] - former[key];
+  function calcTransformDelta(actual, former) {
+    var delta = {};
+    for (var key in actual) {
+      delta[key] = actual[key] - former[key];
+    }
+    return delta;
   }
-  return delta;
+
 };
 
-// Draw legend with column controls
 Chart.prototype.drawLegend = function drawLegend() {
   //console.log( arguments.callee.name );
   var self = this;
   var legend = document.createElement("div");
   legend.className = "chart-legend";
-  legend.style.width = this.canvas.width + "px";
+  legend.style.width = this.view.width + "px";
   this.container.appendChild(legend);
   this.settings.displayed.forEach(function (columnId) {
     var checkbox = document.createElement("input");
@@ -539,7 +520,6 @@ Chart.prototype.drawLegend = function drawLegend() {
   });
 };
 
-// Calculate extremes and transform params for given data range and view
 Chart.prototype.calcTransform = function calcTransform(view, begin, end) {
   //console.log( arguments.callee.name );
   if (this.settings.displayed.length == 0) { return; }
@@ -577,17 +557,21 @@ Chart.prototype.calcTransform = function calcTransform(view, begin, end) {
   transform.xRatio = view.width / (transform.maxX - transform.minX);
   transform.yRatio = -view.height / (transform.maxY - transform.minY);
   transform.xOffset = -transform.minX * transform.xRatio;
-  transform.yOffset = -transform.maxY * transform.yRatio + view.y1;
+  transform.yOffset = -transform.maxY * transform.yRatio;
   transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
   return transform;
 };
 
 Chart.prototype.clear = function clear() {
   //console.log( arguments.callee.name );
-  var ctx = this.ctx;
-  var overCtx = this.overCtx;
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  overCtx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  var viewCtx = this.viewCtx;
+  var overViewCtx = this.overViewCtx;
+  var previewCtx = this.previewCtx;
+  var overPreviewCtx = this.overPreviewCtx;
+  this.viewCtx.clearRect(0, 0, this.viewCtx.canvas.width, this.viewCtx.canvas.height);
+  this.overViewCtx.clearRect(0, 0, this.overViewCtx.canvas.width, this.overViewCtx.canvas.height);
+  this.previewCtx.clearRect(0, 0, this.previewCtx.canvas.width, this.previewCtx.canvas.height);
+  this.overPreviewCtx.clearRect(0, 0, this.overPreviewCtx.canvas.width, this.overPreviewCtx.canvas.height);
   var tooltip = document.getElementById("chart-tooltip-" + this.id);
   if (tooltip) {
     tooltip.style.opacity = 0;
@@ -597,27 +581,30 @@ Chart.prototype.clear = function clear() {
 // Render view / preview
 Chart.prototype.renderView = function renderView(view, transform) {
   //console.log( arguments.callee.name );
-  var ctx = this.ctx;
+  var ctx = view.getContext("2d");
   this.drawLabels(view, transform);
-  var xColumn = this.settings.xColumn;
+  var columns = this.data.columns;
+  var xColumn = columns[this.settings.xColumn];
+  var displayed = this.settings.displayed;
+  var colors = this.data.colors;
 
   ctx.save();
-  ctx.lineWidth = view.lineWidth;
+  ctx.lineWidth = view.lineWidth || 1;
   var i, j, column_key, column, x0, y0, x, y;
-  for (i = 0; (column = this.data.columns[i]); i++) {
+  for (i = 0; (column = columns[i]); i++) {
     column_key = column[0];
-    if (column_key === "x" || this.settings.displayed.indexOf(column_key) < 0) {
+    if (column_key === "x" || displayed.indexOf(column_key) < 0) {
       continue;
     }
-    ctx.strokeStyle = this.data.colors[column_key];
+    ctx.strokeStyle = colors[column_key];
     ctx.save();
     ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-    x0 = this.data.columns[xColumn][transform.begin];
+    x0 = xColumn[transform.begin];
     y0 = column[transform.begin];
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     for (j = transform.begin; j <= transform.end; j += transform.xStep) {
-      x = this.data.columns[xColumn][j];
+      x = xColumn[j];
       y = column[j];
       ctx.lineTo(x, y);
     }
@@ -632,7 +619,7 @@ Chart.prototype.drawLabels = function drawLabels(view, transform) {
   //console.log( arguments.callee.name );
   if (!view.labels) { return; }
   var colors = this.settings[this.settings.mode];
-  var xColumn = this.settings.xColumn;
+  var xColumn = this.data.columns[this.settings.xColumn];
 
   var ctx = this.ctx;
   ctx.save();
@@ -670,7 +657,7 @@ Chart.prototype.drawLabels = function drawLabels(view, transform) {
   var xStep = Math.floor( (transform.end - transform.begin) / view.labels ) || 1;
   var x = transform.begin;
   while ( x < transform.end) {
-    var value = this.data.columns[xColumn][x];
+    var value = xColumn[x];
     var labelX = applyTransform(value, 0, transform)[0];
     value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
     ctx.fillText(value, labelX, view.y0 + 10);
@@ -680,17 +667,21 @@ Chart.prototype.drawLabels = function drawLabels(view, transform) {
 };
 
 // Transform helper
-function applyTransform(x, y, transform, reverse) {
+function applyTransform(x, y, view, reverse) {
+  var xRatio = view.transform.xRatio;
+  var yRatio = view.transform.yRatio;
+  var xOffset = view.transform.xOffset;
+  var yOffset = view.transform.yOffset;
   var result;
   if (reverse) {
     result = [
-      x / transform.xRatio - transform.xOffset / transform.xRatio,
-      y / transform.yRatio - transform.yOffset / transform.yRatio
+      x / xRatio - xOffset / xRatio,
+      y / yRatio - yOffset / yRatio
     ];
   } else {
     result = [
-      x * transform.xRatio + transform.xOffset,
-      y * transform.yRatio + transform.yOffset
+      x * xRatio + xOffset,
+      y * yRatio + yOffset
     ];
   }
   return result;

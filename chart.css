@@ -42,7 +42,10 @@ body {
   display: inline-block;
   vertical-align: top;
 }
-.chart .view-overlay, .chart .preview-overlay {
+.view, .preview {
+  display: block;
+}
+.view-overlay, .preview-overlay {
   position: absolute;
   top: 0;
   left: 0;
