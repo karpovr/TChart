@@ -52,6 +52,9 @@ body {
   font-weight: bold;
   font-size: 1em;
 }
+night-mode .chart-title {
+  color: #fff;
+}
 .chart-graph {
   position: relative;
   display: block;
