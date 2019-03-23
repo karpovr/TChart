@@ -87,7 +87,7 @@
       xhr.send();
     }
 
-    function uploadData () {
+    function uploadData (e) {
       try {
         var input = e.target;
         var file = input.files[0];
