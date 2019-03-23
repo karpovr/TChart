@@ -121,9 +121,11 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
 
   var prevX;
 
+
   overPreview.addEventListener("mousedown", setupMove);
   overPreview.addEventListener("touchstart", setupMove);
 
+  var opts = {passive: false};
   function setupMove(e) {
     e.preventDefault();
     var rect = e.target.getBoundingClientRect();
@@ -137,17 +139,17 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     prevX = x;
     if ( Math.abs(x - previewFrame.x0) <= threshold ) {
       document.addEventListener("mousemove", moveBegin);
-      document.addEventListener("touchmove", moveBegin);
+      document.addEventListener("touchmove", moveBegin, opts);
       document.addEventListener("mouseup", upBegin);
       document.addEventListener("touchend", upBegin);
     } else if ( Math.abs(x - previewFrame.x1) <= threshold ) {
       document.addEventListener("mousemove", moveEnd);
-      document.addEventListener("touchmove", moveEnd);
+      document.addEventListener("touchmove", moveEnd, opts);
       document.addEventListener("mouseup", upEnd);
       document.addEventListener("touchend", upEnd);
     } else if (previewFrame.x0 < x && x < previewFrame.x1) {
       document.addEventListener("mousemove", moveFrame);
-      document.addEventListener("touchmove", moveFrame);
+      document.addEventListener("touchmove", moveFrame, opts);
       document.addEventListener("mouseup", upFrame);
       document.addEventListener("touchend", upFrame);
     }
