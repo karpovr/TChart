@@ -7,6 +7,10 @@
  */
 
 function Chart(data, container, width, height) {
+  var chart = document.createElement("div");
+  chart.className = "chart";
+  container.appendChild(chart);
+
   width = width || 400;
   height = height || 600;
   var view = document.createElement("canvas");
@@ -14,13 +18,13 @@ function Chart(data, container, width, height) {
   view.width = width;
   view.height = Math.round(height / 10 * 8);
   var viewCtx = view.getContext("2d");
-  container.appendChild(view);
+  chart.appendChild(view);
 
   var overView = document.createElement("canvas");
   overView.className = "view-overlay";
   overView.width = view.width;
   overView.height = view.height;
-  container.appendChild(overView);
+  chart.appendChild(overView);
   var overViewCtx = overView.getContext("2d");
 
   var preview = document.createElement("canvas");
@@ -29,18 +33,18 @@ function Chart(data, container, width, height) {
   preview.className = "preview";
   preview.style.top = view.height + "px";
   var previewCtx = preview.getContext("2d");
-  container.appendChild(preview);
+  chart.appendChild(preview);
 
   var overPreview = document.createElement("canvas");
   overPreview.className = "preview-overlay";
   overPreview.width = preview.width;
   overPreview.height = preview.height;
   overPreview.style.top = preview.style.top;
-  container.appendChild(overPreview);
+  chart.appendChild(overPreview);
   var overPreviewCtx = overPreview.getContext("2d");
 
   this.id = Date.now();
-  this.container = container;
+  this.chart = chart;
   this.view = view;
   this.viewCtx = viewCtx;
   this.overView = overView;
@@ -97,7 +101,7 @@ function Chart(data, container, width, height) {
   // Listen to mode switch event
   var self = this;
   var body = document.getElementsByTagName("body")[0];
-  body.addEventListener("mode", function (e) {
+  this.addListener(body, "mode", function (e) {
     self.settings.mode = e.detail;
     self.drawChart();
   });
@@ -107,7 +111,43 @@ function Chart(data, container, width, height) {
   this.drawLegend();
   this.setViewInteraction();
   this.setPreviewInteraction();
+
+  this.addListener(document, "click", function (e) {
+    alert("chart id = " + self.id);
+  });
 }
+
+Chart.prototype.addListener = function () {
+  this.addedListeners = this.addedListeners || [];
+  var target = arguments[0];
+  var args = [].slice.call(arguments, 1);
+  target.addEventListener.apply(target, args);
+  this.addedListeners.push({
+    target: target,
+    args: args
+  });
+};
+
+Chart.prototype.destroy = function () {
+  this.addedListeners.forEach(function (item) {
+    item.target.removeEventListener.apply(item.target, item.args);
+  });
+  this.chart.innerHTML = "";
+  this.chart.parentNode.removeChild(this.chart);
+  delete this.addedListeners;
+  delete this.id;
+  delete this.chart;
+  delete this.view;
+  delete this.viewCtx;
+  delete this.overView;
+  delete this.overViewCtx;
+  delete this.preview;
+  delete this.previewCtx;
+  delete this.overPreview;
+  delete this.overPreviewCtx;
+  delete this.data;
+  delete this.settings;
+};
 
 Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   //console.log( arguments.callee.name );
@@ -119,8 +159,8 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   var threshold = 10;
   var column = this.data.columns[this.settings.xColumn];
 
-  overPreview.addEventListener("mousedown", setMove);
-  overPreview.addEventListener("touchstart", setMove);
+  this.addListener(overPreview, "mousedown", setMove);
+  this.addListener(overPreview, "touchstart", setMove);
 
   var target;
   var prevPointerX;
@@ -150,10 +190,10 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     } else if (previewFrame.x0 < x && x < previewFrame.x1) {
       target = "frame";
     }
-    document.addEventListener("mousemove", move);
-    document.addEventListener("touchmove", move, {passive: false});
-    document.addEventListener("mouseup", unsetMove);
-    document.addEventListener("touchend", unsetMove);
+    this.addListener(document, "mousemove", move);
+    this.addListener(document, "touchmove", move, {passive: false});
+    this.addListener(document, "mouseup", unsetMove);
+    this.addListener(document, "touchend", unsetMove);
   }
 
   function move(e) {
@@ -284,14 +324,14 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
   var column = this.data.columns[xColumn];
   var view = this.view;
   var currentIndex;
-  this.overView.addEventListener("mousemove", showInfo);
-  this.overView.addEventListener("touchmove", showInfo);
+  this.addListener(this.overView, "mousemove", showInfo);
+  this.addListener(this.overView, "touchmove", showInfo);
 
   var tooltip = document.createElement("div");
   tooltip.className = "chart-tooltip";
   tooltip.id = "chart-tooltip-" + this.id;
   tooltip.style.opacity = "0";
-  this.container.appendChild(tooltip);
+  this.chart.appendChild(tooltip);
 
   function showInfo(e) {
     var rect = e.target.getBoundingClientRect();
@@ -465,7 +505,7 @@ Chart.prototype.drawLegend = function drawLegend() {
   var legend = document.createElement("div");
   legend.className = "chart-legend";
   legend.style.width = this.view.width + "px";
-  this.container.appendChild(legend);
+  this.chart.appendChild(legend);
   this.settings.displayed.forEach(function (columnId) {
     var checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -482,7 +522,7 @@ Chart.prototype.drawLegend = function drawLegend() {
     label.appendChild(name);
     label.className = "checkbox-round-label ripple";
     legend.appendChild(label);
-    checkbox.addEventListener("change", function (e) {
+    self.addListener(checkbox, "change", function (e) {
       if (e.target.checked) {
         self.settings.displayed.push(columnId);
       } else {

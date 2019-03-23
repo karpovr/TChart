@@ -42,6 +42,9 @@ body {
   display: inline-block;
   vertical-align: top;
 }
+.chart:empty {
+  display: none;
+}
 .view, .preview {
   display: block;
 }
