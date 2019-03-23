@@ -1,12 +1,10 @@
 /*
  * Telegram contest: Charts
- *
  * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
- *
  * Date: 2019-03-11T09:59Z
  */
 
-function Chart(data, container, width, height) {
+var Chart = function (data, container, width, height) {
   var chart = document.createElement("div");
   chart.className = "chart";
   container.appendChild(chart);
@@ -111,21 +109,6 @@ function Chart(data, container, width, height) {
   this.drawLegend();
   this.setViewInteraction();
   this.setPreviewInteraction();
-
-  this.addListener(document, "click", function (e) {
-    alert("chart id = " + self.id);
-  });
-}
-
-Chart.prototype.addListener = function () {
-  this.addedListeners = this.addedListeners || [];
-  var target = arguments[0];
-  var args = [].slice.call(arguments, 1);
-  target.addEventListener.apply(target, args);
-  this.addedListeners.push({
-    target: target,
-    args: args
-  });
 };
 
 Chart.prototype.destroy = function () {
@@ -147,6 +130,17 @@ Chart.prototype.destroy = function () {
   delete this.overPreviewCtx;
   delete this.data;
   delete this.settings;
+};
+
+Chart.prototype.addListener = function () {
+  this.addedListeners = this.addedListeners || [];
+  var target = arguments[0];
+  var args = [].slice.call(arguments, 1);
+  target.addEventListener.apply(target, args);
+  this.addedListeners.push({
+    target: target,
+    args: args
+  });
 };
 
 Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
@@ -190,10 +184,10 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     } else if (previewFrame.x0 < x && x < previewFrame.x1) {
       target = "frame";
     }
-    this.addListener(document, "mousemove", move);
-    this.addListener(document, "touchmove", move, {passive: false});
-    this.addListener(document, "mouseup", unsetMove);
-    this.addListener(document, "touchend", unsetMove);
+    document.addEventListener("mousemove", move);
+    document.addEventListener("touchmove", move, {passive: false});
+    document.addEventListener("mouseup", unsetMove);
+    document.addEventListener("touchend", unsetMove);
   }
 
   function move(e) {
@@ -274,6 +268,7 @@ Chart.prototype.drawPreviewControl = function drawPreviewControl() {
   var preview = this.preview;
   var colors = this.settings[this.settings.mode];
 
+  ctx.clearRect(0, 0, preview.width, preview.height);
   ctx.save();
   ctx.fillStyle = colors.previewMask;
   ctx.globalAlpha = colors.previewMaskA;
@@ -427,7 +422,7 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
         var color = self.data.colors[columnId];
         ctx.strokeStyle = color;
         ctx.fillStyle = colors.bg;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = self.settings.view.lineWidth;;
         ctx.fill();
         ctx.stroke();
       }
@@ -446,10 +441,12 @@ Chart.prototype.drawChart = function drawChart() {
   var actualPreviewTransform = this.calcTransform(this.preview, 1, this.settings.total);
   var actualViewTransform = this.calcTransform(this.view, this.settings.begin, this.settings.end);
 
+  // Nothing to display, clear views
   if (!actualPreviewTransform) {
     this.clear();
     return;
   }
+  // Nothing is displayed, render views
   if (!formerPreviewTransform) {
     renderViews(this);
     return;
@@ -474,19 +471,19 @@ Chart.prototype.drawChart = function drawChart() {
         actualViewTransform[key] = Math.round(actualViewTransform[key]);
       }
     }
-    renderViews(self);
+    renderViews();
     if (++step <= steps) {
       self.animationRequest = requestAnimationFrame(renderStep);
     }
   }
 
   function renderViews(chart) {
-    chart.clear();
-    chart.renderView(chart.view, actualViewTransform);
-    chart.view.transform = actualViewTransform;
-    chart.renderView(chart.preview, actualPreviewTransform);
-    chart.preview.transform = actualPreviewTransform;
-    chart.drawPreviewControl();
+    self.clear();
+    self.view.transform = actualViewTransform;
+    self.renderView("view", actualViewTransform);
+    self.preview.transform = actualPreviewTransform;
+    self.renderView("preview", actualPreviewTransform);
+    self.drawPreviewControl();
   }
 
   function calcTransformDelta(actual, former) {
@@ -496,7 +493,6 @@ Chart.prototype.drawChart = function drawChart() {
     }
     return delta;
   }
-
 };
 
 Chart.prototype.drawLegend = function drawLegend() {
@@ -594,17 +590,20 @@ Chart.prototype.clear = function clear() {
 };
 
 // Render view / preview
-Chart.prototype.renderView = function renderView(view, transform) {
+Chart.prototype.renderView = function renderView(viewName, transform) {
   //console.log( arguments.callee.name );
+  var view = this[viewName];
+  var viewSettings = this.settings[viewName];
   var ctx = view.getContext("2d");
-  this.drawLabels(view, transform);
+  ctx.clearRect(0, 0, view.width, view.height);
+  this.drawLabels(viewName, transform);
   var columns = this.data.columns;
   var xColumn = columns[this.settings.xColumn];
   var displayed = this.settings.displayed;
   var colors = this.data.colors;
 
   ctx.save();
-  ctx.lineWidth = view.lineWidth || 1;
+  ctx.lineWidth = viewSettings.lineWidth;
   var i, j, column_key, column, x0, y0, x, y;
   for (i = 0; (column = columns[i]); i++) {
     column_key = column[0];
@@ -630,20 +629,22 @@ Chart.prototype.renderView = function renderView(view, transform) {
 };
 
 // Draw labels in view
-Chart.prototype.drawLabels = function drawLabels(view, transform) {
+Chart.prototype.drawLabels = function drawLabels(viewName, transform) {
   //console.log( arguments.callee.name );
-  if (!view.labels) { return; }
+  var view = this[viewName];
+  var viewSettings = this.settings[viewName];
+  if (!viewSettings.labels) { return; }
   var colors = this.settings[this.settings.mode];
   var xColumn = this.data.columns[this.settings.xColumn];
 
-  var ctx = this.ctx;
+  var ctx = this.view.getContext("2d");
   ctx.save();
   ctx.font = "14px sans-serif";
   ctx.textBaseline = "bottom";
   ctx.strokeStyle = colors.yline;
   ctx.fillStyle = colors.label;
   ctx.lineWidth = 1;
-  var yStep = Math.round( (transform.maxY - transform.minY) / view.labels);
+  var yStep = Math.round( (transform.maxY - transform.minY) / viewSettings.labels);
   var exp = Math.floor(Math.log10(yStep));
   yStep = Math.round( yStep / Math.pow(10, exp) ) * Math.pow(10, exp) || 1;
   var y = Math.round(transform.minY / yStep) * yStep;
@@ -663,19 +664,19 @@ Chart.prototype.drawLabels = function drawLabels(view, transform) {
       ctx.strokeStyle = colors.yline;
     }
     ctx.stroke();
-    var labelPosition = applyTransform(x0, y, transform);
+    var labelPosition = applyTransform(x0, y, view);
     ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
     y += yStep;
   }
 
   ctx.textBaseline = "top";
-  var xStep = Math.floor( (transform.end - transform.begin) / view.labels ) || 1;
+  var xStep = Math.floor( (transform.end - transform.begin) / viewSettings.labels ) || 1;
   var x = transform.begin;
   while ( x < transform.end) {
     var value = xColumn[x];
-    var labelX = applyTransform(value, 0, transform)[0];
+    var labelX = applyTransform(value, 0, view)[0];
     value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
-    ctx.fillText(value, labelX, view.y0 + 10);
+    ctx.fillText(value, labelX, view.height - 20);
     x += xStep;
   }
   ctx.restore();

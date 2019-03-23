@@ -1,8 +1,6 @@
 /*
  * Telegram contest: Charts
- *
  * Copyright 2019 Roman Karpov (roman.karpov@gmail.com)
- *
  * Date: 2019-03-11T09:59Z
  */
 
@@ -18,7 +16,6 @@ body {
   background-color: #242f3e;
   color: #242f3e;
 }
-
 .mode-switch {
   color: #108be3;
   font-size: 1.2em;
@@ -35,7 +32,6 @@ body {
 .night-mode .mode-switch {
   color: #36a8f1;
 }
-
 .chart {
   margin: 1em;
   position: relative;
