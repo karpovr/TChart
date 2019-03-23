@@ -119,14 +119,20 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   var threshold = 10;
   var column = this.data.columns[this.settings.xColumn];
 
-  var prevX;
+  overPreview.addEventListener("mousedown", setMove);
+  overPreview.addEventListener("touchstart", setMove);
 
+  var target;
+  var prevPointerX;
 
-  overPreview.addEventListener("mousedown", setupMove);
-  overPreview.addEventListener("touchstart", setupMove);
+  function unsetMove(e) {
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("touchmove", move);
+    document.removeEventListener("mouseup", unsetMove);
+    document.removeEventListener("touchend", unsetMove);
+  }
 
-  var opts = {passive: false};
-  function setupMove(e) {
+  function setMove(e) {
     e.preventDefault();
     var rect = e.target.getBoundingClientRect();
     var clientX;
@@ -136,26 +142,21 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       clientX = e.changedTouches[0].clientX;
     }
     var x = Math.round(clientX - rect.left);
-    prevX = x;
+    prevPointerX = x;
     if ( Math.abs(x - previewFrame.x0) <= threshold ) {
-      document.addEventListener("mousemove", moveBegin);
-      document.addEventListener("touchmove", moveBegin, opts);
-      document.addEventListener("mouseup", upBegin);
-      document.addEventListener("touchend", upBegin);
+      target = "begin";
     } else if ( Math.abs(x - previewFrame.x1) <= threshold ) {
-      document.addEventListener("mousemove", moveEnd);
-      document.addEventListener("touchmove", moveEnd, opts);
-      document.addEventListener("mouseup", upEnd);
-      document.addEventListener("touchend", upEnd);
+      target = "end";
     } else if (previewFrame.x0 < x && x < previewFrame.x1) {
-      document.addEventListener("mousemove", moveFrame);
-      document.addEventListener("touchmove", moveFrame, opts);
-      document.addEventListener("mouseup", upFrame);
-      document.addEventListener("touchend", upFrame);
+      target = "frame";
     }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("touchmove", move, {passive: false});
+    document.addEventListener("mouseup", unsetMove);
+    document.addEventListener("touchend", unsetMove);
   }
 
-  function move(e, what) {
+  function move(e) {
     e.preventDefault();
     var rect = overPreview.getBoundingClientRect();
     var clientX;
@@ -165,14 +166,14 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       clientX = e.changedTouches[0].clientX;
     }
     var x = Math.round(clientX - rect.left);
-    var deltaX = x - prevX;
-    prevX = x;
+    var deltaX = x - prevPointerX;
+    prevPointerX = x;
 
     var prevBegin = self.settings.begin;
     var prevEnd = self.settings.end;
     var chartBeginX, chartEndX, chartBeginIndex, chartEndIndex;
 
-    if (what === "begin") {
+    if (target === "begin") {
       if (Math.abs(previewFrame.x1 - previewFrame.x0 - deltaX) < threshold * 4) { return; }
       previewFrame.x0 += deltaX;
       if (previewFrame.x0 < 0) {
@@ -184,7 +185,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       if (self.settings.begin < 1) {
         self.settings.begin = 1;
       }
-    } else if (what === "end") {
+    } else if (target === "end") {
       if ( Math.abs(previewFrame.x1 + deltaX - previewFrame.x0) < threshold * 4 ) { return; }
       previewFrame.x1 += deltaX;
       if (previewFrame.x1 > preview.width) {
@@ -196,7 +197,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       if (self.settings.end > self.settings.total) {
         self.settings.end = self.settings.total;
       }
-    } else {
+    } else if (target === "frame") {
       var previewFrameWidth = previewFrame.x1 - previewFrame.x0;
       if (previewFrame.x0 + deltaX < 0) {
         previewFrame.x0 = 0;
@@ -223,34 +224,6 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
     if (self.settings.begin !== prevBegin || self.settings.end !== prevEnd) {
       self.drawChart();
     }
-  }
-
-  function moveBegin(e) {
-    move(e, "begin");
-  }
-  function upBegin(e) {
-    document.removeEventListener("mousemove", moveBegin);
-    document.removeEventListener("touchmove", moveBegin);
-    document.removeEventListener("mouseup", upBegin);
-    document.removeEventListener("touchend", upBegin);
-  }
-  function moveEnd(e) {
-    move(e, "end");
-  }
-  function upEnd(e) {
-    document.removeEventListener("mousemove", moveEnd);
-    document.removeEventListener("touchmove", moveEnd);
-    document.removeEventListener("mouseup", upEnd);
-    document.removeEventListener("touchend", upEnd);
-  }
-  function moveFrame(e) {
-    move(e, "frame");
-  }
-  function upFrame(e) {
-    document.removeEventListener("mousemove", moveFrame);
-    document.removeEventListener("touchmove", moveFrame);
-    document.removeEventListener("mouseup", upFrame);
-    document.removeEventListener("touchend", upFrame);
   }
 };
 
