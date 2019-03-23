@@ -66,10 +66,18 @@ var Chart = function (data, container, width, height) {
   settings.begin = settings.total - (settings.total >> 2);
   settings.end = settings.total;
   settings.preview = {
+    x0: 0,
+    y0: preview.height,
+    x1: preview.width,
+    y1:0,
     lineWidth: 1,
     labels: 0
   };
   settings.view = {
+    x0: 0,
+    y0: view.height - 40,
+    x1: preview.width,
+    y1: 10,
     lineWidth: 3,
     labels: 5
   };
@@ -143,8 +151,7 @@ Chart.prototype.addListener = function () {
   });
 };
 
-Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
-  //console.log( arguments.callee.name );
+Chart.prototype.setPreviewInteraction = function () {
   var self = this;
   var preview = this.preview;
   var overPreview = this.overPreview;
@@ -213,7 +220,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       if (previewFrame.x0 < 0) {
         previewFrame.x0 = 0;
       }
-      chartBeginX = applyTransform(previewFrame.x0, 0, preview, true)[0];
+      chartBeginX = canvas2view(previewFrame.x0, 0, preview)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.begin = chartBeginIndex;
       if (self.settings.begin < 1) {
@@ -225,7 +232,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
       if (previewFrame.x1 > preview.width) {
         previewFrame.x1 = preview.width;
       }
-      chartEndX = applyTransform(previewFrame.x1, 0, preview, true)[0];
+      chartEndX = canvas2view(previewFrame.x1, 0, preview)[0];
       chartEndIndex = Math.abs(binarySearch(column, chartEndX, function (a, b) { return a - b; }));
       self.settings.end = chartEndIndex;
       if (self.settings.end > self.settings.total) {
@@ -244,7 +251,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
         previewFrame.x1 += deltaX;
       }
       var indexDelta = self.settings.end - self.settings.begin;
-      chartBeginX = applyTransform(previewFrame.x0, 0, preview, true)[0];
+      chartBeginX = canvas2view(previewFrame.x0, 0, preview)[0];
       chartBeginIndex = Math.abs(binarySearch(column, chartBeginX, function (a, b) { return a - b; }));
       self.settings.begin = chartBeginIndex;
       if (self.settings.begin < 1) {
@@ -261,8 +268,7 @@ Chart.prototype.setPreviewInteraction = function setPreviewInteraction() {
   }
 };
 
-Chart.prototype.drawPreviewControl = function drawPreviewControl() {
-  //console.log( arguments.callee.name );
+Chart.prototype.drawPreviewControl = function () {
   var self = this;
   var ctx = this.overPreviewCtx;
   var preview = this.preview;
@@ -283,8 +289,8 @@ Chart.prototype.drawPreviewControl = function drawPreviewControl() {
     var end = this.settings.end;
     var xBegin = this.data.columns[xColumn][begin];
     var xEnd = this.data.columns[xColumn][end];
-    x0 = applyTransform(xBegin, 0, preview)[0];
-    x1 = applyTransform(xEnd, 0, preview)[0];
+    x0 = view2canvas(xBegin, 0, preview)[0];
+    x1 = view2canvas(xEnd, 0, preview)[0];
     this.previewFrame = {
       x0: x0,
       x1: x1,
@@ -312,8 +318,7 @@ Chart.prototype.drawPreviewControl = function drawPreviewControl() {
   ctx.restore();
 };
 
-Chart.prototype.setViewInteraction = function setViewInteraction() {
-  //console.log( arguments.callee.name );
+Chart.prototype.setViewInteraction = function () {
   var self = this;
   var xColumn = this.settings.xColumn;
   var column = this.data.columns[xColumn];
@@ -337,7 +342,7 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
       clientX = e.changedTouches[0].clientX;
     }
     var x = Math.round(clientX - rect.left);
-    x = Math.round(applyTransform(x, 0, view, true)[0]);
+    x = Math.round(canvas2view(x, 0, view)[0]);
     var pointerIndex = binarySearch(column, x, function (a, b) { return a - b; });
     if (pointerIndex < 0) {
       pointerIndex = Math.abs(pointerIndex) - 1;
@@ -380,7 +385,7 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
     });
     tooltip.style.opacity = "1";
     var width = tooltip.offsetWidth;
-    var left = Math.round(applyTransform(xValue, 0, view)[0]);
+    var left = Math.round(view2canvas(xValue, 0, view)[0]);
     left += 15;
     tooltip.style.left = "";
     tooltip.style.right = "";
@@ -416,7 +421,7 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
       var columnId = column[0];
       if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
         var y = column[currentIndex];
-        var canvasPoint = applyTransform(x, y, view);
+        var canvasPoint = view2canvas(x, y, view);
         ctx.beginPath();
         ctx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
         var color = self.data.colors[columnId];
@@ -432,14 +437,13 @@ Chart.prototype.setViewInteraction = function setViewInteraction() {
 };
 
 // Draw chart with animation effect
-Chart.prototype.drawChart = function drawChart() {
-  //console.log( arguments.callee.name );
+Chart.prototype.drawChart = function () {
   var self = this;
   var formerPreviewTransform = this.preview.transform;
   var formerViewTransform = this.view.transform;
 
-  var actualPreviewTransform = this.calcTransform(this.preview, 1, this.settings.total);
-  var actualViewTransform = this.calcTransform(this.view, this.settings.begin, this.settings.end);
+  var actualPreviewTransform = this.calcTransform("preview", 1, this.settings.total);
+  var actualViewTransform = this.calcTransform("view", this.settings.begin, this.settings.end);
 
   // Nothing to display, clear views
   if (!actualPreviewTransform) {
@@ -495,8 +499,7 @@ Chart.prototype.drawChart = function drawChart() {
   }
 };
 
-Chart.prototype.drawLegend = function drawLegend() {
-  //console.log( arguments.callee.name );
+Chart.prototype.drawLegend = function () {
   var self = this;
   var legend = document.createElement("div");
   legend.className = "chart-legend";
@@ -531,10 +534,11 @@ Chart.prototype.drawLegend = function drawLegend() {
   });
 };
 
-Chart.prototype.calcTransform = function calcTransform(view, begin, end) {
-  //console.log( arguments.callee.name );
+Chart.prototype.calcTransform = function (viewName, begin, end) {
   if (this.settings.displayed.length == 0) { return; }
-  var i,
+  var view = this[viewName],
+      viewSettings = this.settings[viewName],
+      i,
       j,
       column,
       column_key,
@@ -566,15 +570,14 @@ Chart.prototype.calcTransform = function calcTransform(view, begin, end) {
   transform.minY = minY;
   transform.maxY = maxY;
   transform.xRatio = view.width / (transform.maxX - transform.minX);
-  transform.yRatio = -view.height / (transform.maxY - transform.minY);
+  transform.yRatio = (viewSettings.y1 - viewSettings.y0) / (transform.maxY - transform.minY);
   transform.xOffset = -transform.minX * transform.xRatio;
-  transform.yOffset = -transform.maxY * transform.yRatio;
+  transform.yOffset = -transform.maxY * transform.yRatio + viewSettings.y1;
   transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
   return transform;
 };
 
-Chart.prototype.clear = function clear() {
-  //console.log( arguments.callee.name );
+Chart.prototype.clear = function () {
   var viewCtx = this.viewCtx;
   var overViewCtx = this.overViewCtx;
   var previewCtx = this.previewCtx;
@@ -590,8 +593,7 @@ Chart.prototype.clear = function clear() {
 };
 
 // Render view / preview
-Chart.prototype.renderView = function renderView(viewName, transform) {
-  //console.log( arguments.callee.name );
+Chart.prototype.renderView = function (viewName, transform) {
   var view = this[viewName];
   var viewSettings = this.settings[viewName];
   var ctx = view.getContext("2d");
@@ -629,8 +631,7 @@ Chart.prototype.renderView = function renderView(viewName, transform) {
 };
 
 // Draw labels in view
-Chart.prototype.drawLabels = function drawLabels(viewName, transform) {
-  //console.log( arguments.callee.name );
+Chart.prototype.drawLabels = function (viewName, transform) {
   var view = this[viewName];
   var viewSettings = this.settings[viewName];
   if (!viewSettings.labels) { return; }
@@ -664,7 +665,7 @@ Chart.prototype.drawLabels = function drawLabels(viewName, transform) {
       ctx.strokeStyle = colors.yline;
     }
     ctx.stroke();
-    var labelPosition = applyTransform(x0, y, view);
+    var labelPosition = view2canvas(x0, y, view);
     ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
     y += yStep;
   }
@@ -674,41 +675,34 @@ Chart.prototype.drawLabels = function drawLabels(viewName, transform) {
   var x = transform.begin;
   while ( x < transform.end) {
     var value = xColumn[x];
-    var labelX = applyTransform(value, 0, view)[0];
+    var labelX = view2canvas(value, 0, view)[0];
     value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
-    ctx.fillText(value, labelX, view.height - 20);
+    ctx.fillText(value, labelX, view.height - 30);
     x += xStep;
   }
   ctx.restore();
 };
 
-// Transform helper
-function applyTransform(x, y, view, reverse) {
+function canvas2view (x, y, view) {
   var xRatio = view.transform.xRatio;
   var yRatio = view.transform.yRatio;
   var xOffset = view.transform.xOffset;
   var yOffset = view.transform.yOffset;
-  var result;
-  if (reverse) {
-    result = [
-      x / xRatio - xOffset / xRatio,
-      y / yRatio - yOffset / yRatio
-    ];
-  } else {
-    result = [
-      x * xRatio + xOffset,
-      y * yRatio + yOffset
-    ];
-  }
-  return result;
-}
-
-function canvas2view (x, y, view) {
-  return applyTransform(x, y, view.transform, true);
+  return [
+    x / xRatio - xOffset / xRatio,
+    y / yRatio - yOffset / yRatio
+  ];
 }
 
 function view2canvas (x, y, view) {
-  return applyTransform(x, y, view.transform, false);
+  var xRatio = view.transform.xRatio;
+  var yRatio = view.transform.yRatio;
+  var xOffset = view.transform.xOffset;
+  var yOffset = view.transform.yOffset;
+  return [
+    x * xRatio + xOffset,
+    y * yRatio + yOffset
+  ];
 }
 
 // Binary search helper
@@ -726,4 +720,16 @@ function binarySearch(array, value, compare) {
     }
   }
   return -i - 1;
+}
+
+// Extend
+function extend(dst) {
+  var i, key;
+  for (i = 1; i < arguments.length; i++) {
+    var src = arguments[i];
+    for (key in src) {
+      dst[key] = src[key];
+    }
+  }
+  return dst;
 }
