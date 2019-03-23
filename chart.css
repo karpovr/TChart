@@ -10,7 +10,7 @@ body {
   color: #222222;
 }
 #buttons-container {
-  margin: 0 0 2em 0;
+  margin: 0 0 1em 0;
 }
 .night-mode {
   background-color: #242f3e;
@@ -34,7 +34,6 @@ body {
 }
 .chart {
   margin: 1em;
-  position: relative;
   display: inline-block;
   vertical-align: top;
 }
@@ -48,6 +47,14 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+}
+.chart-title {
+  font-weight: bold;
+  font-size: 1em;
+}
+.chart-graph {
+  position: relative;
+  display: block;
 }
 .chart-legend {
   margin: 0;

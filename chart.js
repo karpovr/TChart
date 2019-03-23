@@ -8,7 +8,8 @@
 
   global.Chart = function Chart(params) {
     var defaults = {
-      width: 400,
+      title: "Chart",
+      width: 340,
       height: 600,
       animationSteps: 10,
       day: {
@@ -34,22 +35,6 @@
         previewFrameA: 0.2
       }
     };
-    defaults.preview = {
-      x0: 0,
-      y0: defaults.height / 10,
-      x1: defaults.width,
-      y1: 0,
-      lineWidth: 1,
-      labels: 0
-    };
-    defaults.view = {
-      x0: 0,
-      y0: defaults.height - 40,
-      x1: defaults.width,
-      y1: 10,
-      lineWidth: 3,
-      labels: 5
-    };
 
     var settings = extend({}, defaults, params);
     this.settings = settings;
@@ -67,18 +52,27 @@
     chart.className = "chart";
     settings.container.appendChild(chart);
 
+    var title = document.createElement("h1");
+    title.className = "chart-title";
+    title.textContent = settings.title;
+    chart.appendChild(title);
+
+    var graph = document.createElement("div");
+    graph.className = "chart-graph";
+    chart.appendChild(graph);
+
     var view = document.createElement("canvas");
     view.className = "view";
     view.width = settings.width;
     view.height = Math.round(settings.height / 10 * 8);
     var viewCtx = view.getContext("2d");
-    chart.appendChild(view);
+    graph.appendChild(view);
 
     var overView = document.createElement("canvas");
     overView.className = "view-overlay";
     overView.width = view.width;
     overView.height = view.height;
-    chart.appendChild(overView);
+    graph.appendChild(overView);
     var overViewCtx = overView.getContext("2d");
 
     var preview = document.createElement("canvas");
@@ -86,15 +80,15 @@
     preview.height = Math.round(settings.height / 10);
     preview.className = "preview";
     preview.style.top = view.height + "px";
+    graph.appendChild(preview);
     var previewCtx = preview.getContext("2d");
-    chart.appendChild(preview);
 
     var overPreview = document.createElement("canvas");
     overPreview.className = "preview-overlay";
     overPreview.width = preview.width;
     overPreview.height = preview.height;
     overPreview.style.top = preview.style.top;
-    chart.appendChild(overPreview);
+    graph.appendChild(overPreview);
     var overPreviewCtx = overPreview.getContext("2d");
 
     this.id = Date.now();
@@ -116,6 +110,23 @@
       self.drawChart();
     });
     settings.mode = body.className.indexOf("night-mode") >= 0 ? "night" : "day";
+
+    settings.preview = {
+      x0: 0,
+      y0: preview.height,
+      x1: preview.width,
+      y1: 0,
+      lineWidth: 1,
+      labels: 0
+    };
+    settings.view = {
+      x0: 0,
+      y0: view.height - 40,
+      x1: view.width,
+      y1: 10,
+      lineWidth: 3,
+      labels: 5
+    };
 
     this.drawChart();
     this.drawLegend();
@@ -581,7 +592,7 @@
     tooltip.className = "chart-tooltip";
     tooltip.id = "chart-tooltip-" + this.id;
     tooltip.style.opacity = "0";
-    this.chart.appendChild(tooltip);
+    this.chart.querySelectorAll(".chart-graph")[0].appendChild(tooltip);
 
     function showInfo(e) {
       var rect = e.target.getBoundingClientRect();

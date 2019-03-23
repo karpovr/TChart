@@ -110,14 +110,11 @@
     function drawChart(data) {
       var chartsContainer = document.getElementById("charts-container");
       chartsContainer.innerHTML = "";
-      var width = 340;
-      var height = 680;
-      return data.map(function (data) {
+      return data.map(function (data, i) {
         var chart = new Chart({
+          title: "Followers (###)".replace("###", i + 1),
           data: data,
-          container: chartsContainer,
-          width: width,
-          height: height
+          container: chartsContainer
         });
         return chart;
       });
