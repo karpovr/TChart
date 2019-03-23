@@ -113,7 +113,12 @@
       var width = 340;
       var height = 680;
       return data.map(function (data) {
-        var chart = new Chart(data, chartsContainer, width, height);
+        var chart = new Chart({
+          data: data,
+          container: chartsContainer,
+          width: width,
+          height: height
+        });
         return chart;
       });
     }

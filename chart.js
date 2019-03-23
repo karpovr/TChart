@@ -6,17 +6,71 @@
 
 (function (global) {
 
-  global.Chart = function Chart(data, container, width, height) {
+  global.Chart = function Chart(params) {
+    var defaults = {
+      width: 400,
+      height: 600,
+      animationSteps: 10,
+      day: {
+        label: "#96a2aa",
+        yline: "#f2f4f5",
+        vline: "#dfe6eb",
+        zline: "#ecf0f3",
+        bg: "#fff",
+        previewMask: "#eef5f9",
+        previewMaskA: 0.7,
+        previewFrame: "#49b",
+        previewFrameA: 0.2
+      },
+      night: {
+        label: "#546778",
+        yline: "#293544",
+        vline: "#3b4a5a",
+        zline: "#313d4d",
+        bg: "#242f3e",
+        previewMask: "#1f2936",
+        previewMaskA: 0.7,
+        previewFrame: "#49b",
+        previewFrameA: 0.2
+      }
+    };
+    defaults.preview = {
+      x0: 0,
+      y0: defaults.height / 10,
+      x1: defaults.width,
+      y1: 0,
+      lineWidth: 1,
+      labels: 0
+    };
+    defaults.view = {
+      x0: 0,
+      y0: defaults.height - 40,
+      x1: defaults.width,
+      y1: 10,
+      lineWidth: 3,
+      labels: 5
+    };
+
+    var settings = extend({}, defaults, params);
+    this.settings = settings;
+    this.settings.data.columns.forEach(function (column, i) {
+      if (column[0] === "x") {
+        settings.xColumn = i;
+      }
+    });
+    settings.displayed = Object.keys(settings.data.names);
+    settings.total = settings.data.columns[settings.xColumn].length - 1;
+    settings.begin = settings.total - (settings.total >> 2);
+    settings.end = settings.total;
+
     var chart = document.createElement("div");
     chart.className = "chart";
-    container.appendChild(chart);
+    settings.container.appendChild(chart);
 
-    width = width || 400;
-    height = height || 600;
     var view = document.createElement("canvas");
     view.className = "view";
-    view.width = width;
-    view.height = Math.round(height / 10 * 8);
+    view.width = settings.width;
+    view.height = Math.round(settings.height / 10 * 8);
     var viewCtx = view.getContext("2d");
     chart.appendChild(view);
 
@@ -28,8 +82,8 @@
     var overViewCtx = overView.getContext("2d");
 
     var preview = document.createElement("canvas");
-    preview.width = width;
-    preview.height = Math.round(height / 10);
+    preview.width = settings.width;
+    preview.height = Math.round(settings.height / 10);
     preview.className = "preview";
     preview.style.top = view.height + "px";
     var previewCtx = preview.getContext("2d");
@@ -53,58 +107,6 @@
     this.previewCtx = previewCtx;
     this.overPreview = overPreview;
     this.overPreviewCtx = overPreviewCtx;
-    this.data = data;
-
-    var settings = {};
-    this.settings = settings;
-    this.data.columns.forEach(function (column, i) {
-      if (column[0] === "x") {
-        settings.xColumn = i;
-      }
-    });
-    settings.animationSteps = 10;
-    settings.displayed = Object.keys(data.names);
-    settings.total = data.columns[settings.xColumn].length - 1;
-    settings.begin = settings.total - (settings.total >> 2);
-    settings.end = settings.total;
-    settings.preview = {
-      x0: 0,
-      y0: preview.height,
-      x1: preview.width,
-      y1:0,
-      lineWidth: 1,
-      labels: 0
-    };
-    settings.view = {
-      x0: 0,
-      y0: view.height - 40,
-      x1: preview.width,
-      y1: 10,
-      lineWidth: 3,
-      labels: 5
-    };
-    settings.day = {
-      label: "#96a2aa",
-      yline: "#f2f4f5",
-      vline: "#dfe6eb",
-      zline: "#ecf0f3",
-      bg: "#fff",
-      previewMask: "#eef5f9",
-      previewMaskA: 0.7,
-      previewFrame: "#49b",
-      previewFrameA: 0.2
-    };
-    settings.night = {
-      label: "#546778",
-      yline: "#293544",
-      vline: "#3b4a5a",
-      zline: "#313d4d",
-      bg: "#242f3e",
-      previewMask: "#1f2936",
-      previewMaskA: 0.7,
-      previewFrame: "#49b",
-      previewFrameA: 0.2
-    };
 
     // Listen to mode switch event
     var self = this;
@@ -138,7 +140,6 @@
     delete this.previewCtx;
     delete this.overPreview;
     delete this.overPreviewCtx;
-    delete this.data;
     delete this.settings;
   };
 
@@ -153,6 +154,303 @@
     });
   };
 
+  // Draw chart with animation effect
+  Chart.prototype.drawChart = function () {
+    var self = this;
+    var formerPreviewTransform = this.preview.transform;
+    var formerViewTransform = this.view.transform;
+
+    var actualPreviewTransform = this.calcTransform("preview", 1, this.settings.total);
+    var actualViewTransform = this.calcTransform("view", this.settings.begin, this.settings.end);
+
+    // Nothing to display, clear views
+    if (!actualPreviewTransform) {
+      this.clear();
+      return;
+    }
+    // Nothing is displayed, render views
+    if (!formerPreviewTransform) {
+      renderViews(this);
+      return;
+    }
+
+    var previewTransformDelta = calcTransformDelta(actualPreviewTransform, formerPreviewTransform);
+    var viewTransformDelta = calcTransformDelta(actualViewTransform, formerViewTransform);
+
+    var steps = this.settings.animationSteps;
+    var step = 1;
+    if (this.animationRequest) {
+      cancelAnimationFrame(this.animationRequest);
+    }
+    this.animationRequest = requestAnimationFrame(renderStep);
+
+    function renderStep() {
+      for (var key in actualPreviewTransform) {
+        actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
+        actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * step;
+        if (key === "begin" || key === "end") {
+          actualPreviewTransform[key] = Math.round(actualPreviewTransform[key]);
+          actualViewTransform[key] = Math.round(actualViewTransform[key]);
+        }
+      }
+      renderViews();
+      if (++step <= steps) {
+        self.animationRequest = requestAnimationFrame(renderStep);
+      }
+    }
+
+    function renderViews(chart) {
+      self.clear();
+      self.view.transform = actualViewTransform;
+      self.renderView("view", actualViewTransform);
+      self.preview.transform = actualPreviewTransform;
+      self.renderView("preview", actualPreviewTransform);
+      self.drawPreviewControl();
+    }
+
+    function calcTransformDelta(actual, former) {
+      var delta = {};
+      for (var key in actual) {
+        delta[key] = actual[key] - former[key];
+      }
+      return delta;
+    }
+  };
+
+  Chart.prototype.calcTransform = function (viewName, begin, end) {
+    if (this.settings.displayed.length == 0) { return; }
+    var view = this[viewName],
+        viewSettings = this.settings[viewName],
+        i,
+        j,
+        column,
+        column_key,
+        value,
+        minY = 0,
+        maxY = 0,
+        transform = {
+          begin: begin,
+          end: end
+        };
+
+    for (i = 0; (column = this.settings.data.columns[i]); i++) {
+      column_key = column[0];
+      if (column_key === "x") {
+        transform.minX = column[begin];
+        transform.maxX = column[end];
+        continue;
+      } else if (this.settings.displayed.indexOf(column_key) < 0) {
+        continue;
+      }
+      for (j = begin; j <= end; j++) {
+        value = column[j];
+        minY = value < minY ? value : minY;
+        maxY = value > maxY ? value : maxY;
+      }
+    }
+    transform.begin = begin;
+    transform.end = end;
+    transform.minY = minY;
+    transform.maxY = maxY;
+    transform.xRatio = view.width / (transform.maxX - transform.minX);
+    transform.yRatio = (viewSettings.y1 - viewSettings.y0) / (transform.maxY - transform.minY);
+    transform.xOffset = -transform.minX * transform.xRatio;
+    transform.yOffset = -transform.maxY * transform.yRatio + viewSettings.y1;
+    transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
+    return transform;
+  };
+
+  Chart.prototype.clear = function () {
+    var viewCtx = this.viewCtx;
+    var overViewCtx = this.overViewCtx;
+    var previewCtx = this.previewCtx;
+    var overPreviewCtx = this.overPreviewCtx;
+    this.viewCtx.clearRect(0, 0, this.viewCtx.canvas.width, this.viewCtx.canvas.height);
+    this.overViewCtx.clearRect(0, 0, this.overViewCtx.canvas.width, this.overViewCtx.canvas.height);
+    this.previewCtx.clearRect(0, 0, this.previewCtx.canvas.width, this.previewCtx.canvas.height);
+    this.overPreviewCtx.clearRect(0, 0, this.overPreviewCtx.canvas.width, this.overPreviewCtx.canvas.height);
+    var tooltip = document.getElementById("chart-tooltip-" + this.id);
+    if (tooltip) {
+      tooltip.style.opacity = 0;
+    }
+  };
+
+  // Render view / preview
+  Chart.prototype.renderView = function (viewName, transform) {
+    var view = this[viewName];
+    var viewSettings = this.settings[viewName];
+    var ctx = view.getContext("2d");
+    ctx.clearRect(0, 0, view.width, view.height);
+    this.drawLabels(viewName, transform);
+    var columns = this.settings.data.columns;
+    var xColumn = columns[this.settings.xColumn];
+    var displayed = this.settings.displayed;
+    var colors = this.settings.data.colors;
+
+    ctx.save();
+    ctx.lineWidth = viewSettings.lineWidth;
+    var i, j, column_key, column, x0, y0, x, y;
+    for (i = 0; (column = columns[i]); i++) {
+      column_key = column[0];
+      if (column_key === "x" || displayed.indexOf(column_key) < 0) {
+        continue;
+      }
+      ctx.strokeStyle = colors[column_key];
+      ctx.save();
+      ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
+      x0 = xColumn[transform.begin];
+      y0 = column[transform.begin];
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      for (j = transform.begin; j <= transform.end; j += transform.xStep) {
+        x = xColumn[j];
+        y = column[j];
+        ctx.lineTo(x, y);
+      }
+      ctx.restore();
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  // Draw labels in view
+  Chart.prototype.drawLabels = function (viewName, transform) {
+    var view = this[viewName];
+    var viewSettings = this.settings[viewName];
+    if (!viewSettings.labels) { return; }
+    var colors = this.settings[this.settings.mode];
+    var xColumn = this.settings.data.columns[this.settings.xColumn];
+
+    var ctx = this.view.getContext("2d");
+    ctx.save();
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "bottom";
+    ctx.strokeStyle = colors.yline;
+    ctx.fillStyle = colors.label;
+    ctx.lineWidth = 1;
+    var yStep = Math.round( (transform.maxY - transform.minY) / viewSettings.labels);
+    var exp = Math.floor(Math.log10(yStep));
+    yStep = Math.round( yStep / Math.pow(10, exp) ) * Math.pow(10, exp) || 1;
+    var y = Math.round(transform.minY / yStep) * yStep;
+    var i = 0, j = 0;
+    while ( y < transform.maxY) {
+      ctx.save();
+      ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
+      ctx.beginPath();
+      var x0 = transform.minX;
+      var x1 = transform.maxX;
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.restore();
+      if (y === 0) {
+        ctx.strokeStyle = colors.zline;
+      } else {
+        ctx.strokeStyle = colors.yline;
+      }
+      ctx.stroke();
+      var labelPosition = view2canvas(x0, y, view);
+      ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
+      y += yStep;
+    }
+
+    ctx.textBaseline = "top";
+    var xStep = Math.floor( (transform.end - transform.begin) / viewSettings.labels ) || 1;
+    var x = transform.begin;
+    while ( x < transform.end) {
+      var value = xColumn[x];
+      var labelX = view2canvas(value, 0, view)[0];
+      value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
+      ctx.fillText(value, labelX, view.height - 30);
+      x += xStep;
+    }
+    ctx.restore();
+  };
+
+  Chart.prototype.drawLegend = function () {
+    var self = this;
+    var legend = document.createElement("div");
+    legend.className = "chart-legend";
+    legend.style.width = this.view.width + "px";
+    this.chart.appendChild(legend);
+    this.settings.displayed.forEach(function (columnId) {
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.name = self.settings.data.names[columnId];
+      checkbox.id = columnId;
+      checkbox.checked = true;
+      checkbox.className = "checkbox-round";
+      var color = self.settings.data.colors[columnId];
+      checkbox.style.backgroundColor = color;
+      checkbox.style.borderColor = color;
+      var label = document.createElement("label");
+      var name = document.createTextNode(checkbox.name);
+      label.appendChild(checkbox);
+      label.appendChild(name);
+      label.className = "checkbox-round-label ripple";
+      legend.appendChild(label);
+      self.addListener(checkbox, "change", function (e) {
+        if (e.target.checked) {
+          self.settings.displayed.push(columnId);
+        } else {
+          self.settings.displayed = self.settings.displayed.filter(function (item) {
+            return item !== columnId;
+          });
+        }
+        self.drawChart();
+      });
+    });
+  };
+
+  Chart.prototype.drawPreviewControl = function () {
+    var self = this;
+    var ctx = this.overPreviewCtx;
+    var preview = this.preview;
+    var colors = this.settings[this.settings.mode];
+
+    ctx.clearRect(0, 0, preview.width, preview.height);
+    ctx.save();
+    ctx.fillStyle = colors.previewMask;
+    ctx.globalAlpha = colors.previewMaskA;
+    ctx.fillRect(0, 0, preview.width, preview.height);
+    ctx.restore();
+
+    var x0, x1;
+
+    if (!this.previewFrame) {
+      var xColumn = this.settings.xColumn;
+      var begin = this.settings.begin;
+      var end = this.settings.end;
+      var xBegin = this.settings.data.columns[xColumn][begin];
+      var xEnd = this.settings.data.columns[xColumn][end];
+      x0 = view2canvas(xBegin, 0, preview)[0];
+      x1 = view2canvas(xEnd, 0, preview)[0];
+      this.previewFrame = {
+        x0: x0,
+        x1: x1,
+      };
+    }
+    x0 = this.previewFrame.x0;
+    x1 = this.previewFrame.x1;
+
+    ctx.clearRect(x0, 0, x1 - x0, preview.height);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x0, preview.height);
+    ctx.lineTo(x1, preview.height);
+    ctx.lineTo(x1, 0);
+    ctx.lineTo(x0, 0);
+    ctx.closePath();
+    ctx.moveTo(x0 + 5, preview.height - 1);
+    ctx.lineTo(x1 - 5, preview.height - 1);
+    ctx.lineTo(x1 - 5, 1);
+    ctx.lineTo(x0 + 5, 1);
+    ctx.closePath();
+    ctx.fillStyle = colors.previewFrame;
+    ctx.globalAlpha = colors.previewFrameA;
+    ctx.fill("evenodd");
+    ctx.restore();
+  };
+
   Chart.prototype.setPreviewInteraction = function () {
     var self = this;
     var preview = this.preview;
@@ -160,7 +458,7 @@
     var previewFrame = this.previewFrame;
 
     var threshold = 10;
-    var column = this.data.columns[this.settings.xColumn];
+    var column = this.settings.data.columns[this.settings.xColumn];
 
     this.addListener(overPreview, "mousedown", setMove);
     this.addListener(overPreview, "touchstart", setMove);
@@ -270,60 +568,10 @@
     }
   };
 
-  Chart.prototype.drawPreviewControl = function () {
-    var self = this;
-    var ctx = this.overPreviewCtx;
-    var preview = this.preview;
-    var colors = this.settings[this.settings.mode];
-
-    ctx.clearRect(0, 0, preview.width, preview.height);
-    ctx.save();
-    ctx.fillStyle = colors.previewMask;
-    ctx.globalAlpha = colors.previewMaskA;
-    ctx.fillRect(0, 0, preview.width, preview.height);
-    ctx.restore();
-
-    var x0, x1;
-
-    if (!this.previewFrame) {
-      var xColumn = this.settings.xColumn;
-      var begin = this.settings.begin;
-      var end = this.settings.end;
-      var xBegin = this.data.columns[xColumn][begin];
-      var xEnd = this.data.columns[xColumn][end];
-      x0 = view2canvas(xBegin, 0, preview)[0];
-      x1 = view2canvas(xEnd, 0, preview)[0];
-      this.previewFrame = {
-        x0: x0,
-        x1: x1,
-      };
-    }
-    x0 = this.previewFrame.x0;
-    x1 = this.previewFrame.x1;
-
-    ctx.clearRect(x0, 0, x1 - x0, preview.height);
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x0, preview.height);
-    ctx.lineTo(x1, preview.height);
-    ctx.lineTo(x1, 0);
-    ctx.lineTo(x0, 0);
-    ctx.closePath();
-    ctx.moveTo(x0 + 5, preview.height - 1);
-    ctx.lineTo(x1 - 5, preview.height - 1);
-    ctx.lineTo(x1 - 5, 1);
-    ctx.lineTo(x0 + 5, 1);
-    ctx.closePath();
-    ctx.fillStyle = colors.previewFrame;
-    ctx.globalAlpha = colors.previewFrameA;
-    ctx.fill("evenodd");
-    ctx.restore();
-  };
-
   Chart.prototype.setViewInteraction = function () {
     var self = this;
     var xColumn = this.settings.xColumn;
-    var column = this.data.columns[xColumn];
+    var column = this.settings.data.columns[xColumn];
     var view = this.view;
     var currentIndex;
     this.addListener(this.overView, "mousemove", showInfo);
@@ -366,12 +614,12 @@
       var xCaption = document.createElement("div");
       xCaption.textContent = new Date(xValue).toDateString().split(" ").slice(0, -1).join(" ").replace(" ", ", ");
       tooltip.appendChild(xCaption);
-      self.data.columns.forEach(function (column) {
+      self.settings.data.columns.forEach(function (column) {
         var columnId = column[0];
         if (self.settings.displayed.indexOf(columnId) >= 0) {
           var item = document.createElement("div");
           item.className = "item";
-          item.style.color = self.data.colors[columnId];
+          item.style.color = self.settings.data.colors[columnId];
           tooltip.appendChild(item);
           var value = document.createElement("div");
           value.className = "value";
@@ -381,7 +629,7 @@
           item.appendChild(label);
           var yValue = column[currentIndex];
           value.textContent = yValue;
-          var yLabel = self.data.names[columnId];
+          var yLabel = self.settings.data.names[columnId];
           label.textContent = yLabel;
         }
       });
@@ -408,7 +656,7 @@
       ctx.save();
       ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
       ctx.beginPath();
-      var x = self.data.columns[xColumn][currentIndex];
+      var x = self.settings.data.columns[xColumn][currentIndex];
       var y0 = view.transform.minY;
       var y1 = view.transform.maxY;
       ctx.moveTo(x, y0);
@@ -419,14 +667,14 @@
       ctx.stroke();
 
       ctx.save();
-      self.data.columns.forEach(function (column) {
+      self.settings.data.columns.forEach(function (column) {
         var columnId = column[0];
         if ( self.settings.displayed.indexOf(columnId) >= 0 ) {
           var y = column[currentIndex];
           var canvasPoint = view2canvas(x, y, view);
           ctx.beginPath();
           ctx.arc(canvasPoint[0], canvasPoint[1], 5, 0, 2 * Math.PI, false);
-          var color = self.data.colors[columnId];
+          var color = self.settings.data.colors[columnId];
           ctx.strokeStyle = color;
           ctx.fillStyle = colors.bg;
           ctx.lineWidth = self.settings.view.lineWidth;
@@ -436,253 +684,6 @@
       });
       ctx.restore();
     }
-  };
-
-  // Draw chart with animation effect
-  Chart.prototype.drawChart = function () {
-    var self = this;
-    var formerPreviewTransform = this.preview.transform;
-    var formerViewTransform = this.view.transform;
-
-    var actualPreviewTransform = this.calcTransform("preview", 1, this.settings.total);
-    var actualViewTransform = this.calcTransform("view", this.settings.begin, this.settings.end);
-
-    // Nothing to display, clear views
-    if (!actualPreviewTransform) {
-      this.clear();
-      return;
-    }
-    // Nothing is displayed, render views
-    if (!formerPreviewTransform) {
-      renderViews(this);
-      return;
-    }
-
-    var previewTransformDelta = calcTransformDelta(actualPreviewTransform, formerPreviewTransform);
-    var viewTransformDelta = calcTransformDelta(actualViewTransform, formerViewTransform);
-
-    var steps = this.settings.animationSteps;
-    var step = 1;
-    if (this.animationRequest) {
-      cancelAnimationFrame(this.animationRequest);
-    }
-    this.animationRequest = requestAnimationFrame(renderStep);
-
-    function renderStep() {
-      for (var key in actualPreviewTransform) {
-        actualPreviewTransform[key] = formerPreviewTransform[key] + previewTransformDelta[key] / steps * step;
-        actualViewTransform[key] = formerViewTransform[key] + viewTransformDelta[key] / steps * step;
-        if (key === "begin" || key === "end") {
-          actualPreviewTransform[key] = Math.round(actualPreviewTransform[key]);
-          actualViewTransform[key] = Math.round(actualViewTransform[key]);
-        }
-      }
-      renderViews();
-      if (++step <= steps) {
-        self.animationRequest = requestAnimationFrame(renderStep);
-      }
-    }
-
-    function renderViews(chart) {
-      self.clear();
-      self.view.transform = actualViewTransform;
-      self.renderView("view", actualViewTransform);
-      self.preview.transform = actualPreviewTransform;
-      self.renderView("preview", actualPreviewTransform);
-      self.drawPreviewControl();
-    }
-
-    function calcTransformDelta(actual, former) {
-      var delta = {};
-      for (var key in actual) {
-        delta[key] = actual[key] - former[key];
-      }
-      return delta;
-    }
-  };
-
-  Chart.prototype.drawLegend = function () {
-    var self = this;
-    var legend = document.createElement("div");
-    legend.className = "chart-legend";
-    legend.style.width = this.view.width + "px";
-    this.chart.appendChild(legend);
-    this.settings.displayed.forEach(function (columnId) {
-      var checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.name = self.data.names[columnId];
-      checkbox.id = columnId;
-      checkbox.checked = true;
-      checkbox.className = "checkbox-round";
-      var color = self.data.colors[columnId];
-      checkbox.style.backgroundColor = color;
-      checkbox.style.borderColor = color;
-      var label = document.createElement("label");
-      var name = document.createTextNode(checkbox.name);
-      label.appendChild(checkbox);
-      label.appendChild(name);
-      label.className = "checkbox-round-label ripple";
-      legend.appendChild(label);
-      self.addListener(checkbox, "change", function (e) {
-        if (e.target.checked) {
-          self.settings.displayed.push(columnId);
-        } else {
-          self.settings.displayed = self.settings.displayed.filter(function (item) {
-            return item !== columnId;
-          });
-        }
-        self.drawChart();
-      });
-    });
-  };
-
-  Chart.prototype.calcTransform = function (viewName, begin, end) {
-    if (this.settings.displayed.length == 0) { return; }
-    var view = this[viewName],
-        viewSettings = this.settings[viewName],
-        i,
-        j,
-        column,
-        column_key,
-        value,
-        minY = 0,
-        maxY = 0,
-        transform = {
-          begin: begin,
-          end: end
-        };
-
-    for (i = 0; (column = this.data.columns[i]); i++) {
-      column_key = column[0];
-      if (column_key === "x") {
-        transform.minX = column[begin];
-        transform.maxX = column[end];
-        continue;
-      } else if (this.settings.displayed.indexOf(column_key) < 0) {
-        continue;
-      }
-      for (j = begin; j <= end; j++) {
-        value = column[j];
-        minY = value < minY ? value : minY;
-        maxY = value > maxY ? value : maxY;
-      }
-    }
-    transform.begin = begin;
-    transform.end = end;
-    transform.minY = minY;
-    transform.maxY = maxY;
-    transform.xRatio = view.width / (transform.maxX - transform.minX);
-    transform.yRatio = (viewSettings.y1 - viewSettings.y0) / (transform.maxY - transform.minY);
-    transform.xOffset = -transform.minX * transform.xRatio;
-    transform.yOffset = -transform.maxY * transform.yRatio + viewSettings.y1;
-    transform.xStep = Math.floor( (end - begin) / view.width ) || 1;
-    return transform;
-  };
-
-  Chart.prototype.clear = function () {
-    var viewCtx = this.viewCtx;
-    var overViewCtx = this.overViewCtx;
-    var previewCtx = this.previewCtx;
-    var overPreviewCtx = this.overPreviewCtx;
-    this.viewCtx.clearRect(0, 0, this.viewCtx.canvas.width, this.viewCtx.canvas.height);
-    this.overViewCtx.clearRect(0, 0, this.overViewCtx.canvas.width, this.overViewCtx.canvas.height);
-    this.previewCtx.clearRect(0, 0, this.previewCtx.canvas.width, this.previewCtx.canvas.height);
-    this.overPreviewCtx.clearRect(0, 0, this.overPreviewCtx.canvas.width, this.overPreviewCtx.canvas.height);
-    var tooltip = document.getElementById("chart-tooltip-" + this.id);
-    if (tooltip) {
-      tooltip.style.opacity = 0;
-    }
-  };
-
-  // Render view / preview
-  Chart.prototype.renderView = function (viewName, transform) {
-    var view = this[viewName];
-    var viewSettings = this.settings[viewName];
-    var ctx = view.getContext("2d");
-    ctx.clearRect(0, 0, view.width, view.height);
-    this.drawLabels(viewName, transform);
-    var columns = this.data.columns;
-    var xColumn = columns[this.settings.xColumn];
-    var displayed = this.settings.displayed;
-    var colors = this.data.colors;
-
-    ctx.save();
-    ctx.lineWidth = viewSettings.lineWidth;
-    var i, j, column_key, column, x0, y0, x, y;
-    for (i = 0; (column = columns[i]); i++) {
-      column_key = column[0];
-      if (column_key === "x" || displayed.indexOf(column_key) < 0) {
-        continue;
-      }
-      ctx.strokeStyle = colors[column_key];
-      ctx.save();
-      ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-      x0 = xColumn[transform.begin];
-      y0 = column[transform.begin];
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      for (j = transform.begin; j <= transform.end; j += transform.xStep) {
-        x = xColumn[j];
-        y = column[j];
-        ctx.lineTo(x, y);
-      }
-      ctx.restore();
-      ctx.stroke();
-    }
-    ctx.restore();
-  };
-
-  // Draw labels in view
-  Chart.prototype.drawLabels = function (viewName, transform) {
-    var view = this[viewName];
-    var viewSettings = this.settings[viewName];
-    if (!viewSettings.labels) { return; }
-    var colors = this.settings[this.settings.mode];
-    var xColumn = this.data.columns[this.settings.xColumn];
-
-    var ctx = this.view.getContext("2d");
-    ctx.save();
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "bottom";
-    ctx.strokeStyle = colors.yline;
-    ctx.fillStyle = colors.label;
-    ctx.lineWidth = 1;
-    var yStep = Math.round( (transform.maxY - transform.minY) / viewSettings.labels);
-    var exp = Math.floor(Math.log10(yStep));
-    yStep = Math.round( yStep / Math.pow(10, exp) ) * Math.pow(10, exp) || 1;
-    var y = Math.round(transform.minY / yStep) * yStep;
-    var i = 0, j = 0;
-    while ( y < transform.maxY) {
-      ctx.save();
-      ctx.setTransform(transform.xRatio, 0, 0, transform.yRatio, transform.xOffset, transform.yOffset);
-      ctx.beginPath();
-      var x0 = transform.minX;
-      var x1 = transform.maxX;
-      ctx.moveTo(x0, y);
-      ctx.lineTo(x1, y);
-      ctx.restore();
-      if (y === 0) {
-        ctx.strokeStyle = colors.zline;
-      } else {
-        ctx.strokeStyle = colors.yline;
-      }
-      ctx.stroke();
-      var labelPosition = view2canvas(x0, y, view);
-      ctx.fillText(y, labelPosition[0], labelPosition[1] - 5);
-      y += yStep;
-    }
-
-    ctx.textBaseline = "top";
-    var xStep = Math.floor( (transform.end - transform.begin) / viewSettings.labels ) || 1;
-    var x = transform.begin;
-    while ( x < transform.end) {
-      var value = xColumn[x];
-      var labelX = view2canvas(value, 0, view)[0];
-      value = new Date(value).toDateString().split(" ").slice(1, 3).join(" ");
-      ctx.fillText(value, labelX, view.height - 30);
-      x += xStep;
-    }
-    ctx.restore();
   };
 
   // Helpers
