@@ -607,9 +607,15 @@
       if (pointerIndex < 0) {
         pointerIndex = Math.abs(pointerIndex) - 1;
       }
+      if (pointerIndex < view.transform.begin) {
+        pointerIndex = view.transform.begin;
+      }
+      if (pointerIndex > view.transform.end) {
+        pointerIndex = view.transform.end;
+      }
       var x1 = column[pointerIndex];
       var x2 = column[pointerIndex - 1];
-      if ( Math.abs(x2 - x) < Math.abs(x1 - x) ) {
+      if ( Math.abs(x2 - x) < Math.abs(x1 - x) && view.transform.begin <= pointerIndex - 1 ) {
         pointerIndex = pointerIndex - 1;
       }
       if (pointerIndex === currentIndex) { return; }
