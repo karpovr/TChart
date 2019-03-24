@@ -127,7 +127,9 @@
           title: "Followers (###)".replace("###", i + 1),
           data: data,
           container: chartsContainer,
-          mode: mode
+          mode: mode,
+          width: window.innerWidth - 64,
+          height: window.innerHeight - 100
         });
         return chart;
       });
