@@ -12,6 +12,7 @@
       width: 340,
       height: 600,
       animationSteps: 10,
+      mode: "day",
       day: {
         label: "#96a2aa",
         yline: "#f2f4f5",
@@ -101,15 +102,6 @@
     this.previewCtx = previewCtx;
     this.overPreview = overPreview;
     this.overPreviewCtx = overPreviewCtx;
-
-    // Listen to mode switch event
-    var self = this;
-    var body = document.getElementsByTagName("body")[0];
-    this.addListener(body, "mode", function (e) {
-      self.settings.mode = e.detail;
-      self.drawChart();
-    });
-    settings.mode = body.className.indexOf("night-mode") >= 0 ? "night" : "day";
 
     settings.preview = {
       x0: 0,

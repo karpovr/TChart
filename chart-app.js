@@ -9,6 +9,7 @@
   global.ChartsApp = function ChartsApp() {
 
     var charts = [];
+    var mode = "day";
 
     var appContainer = document.getElementById("charts-app");
 
@@ -66,13 +67,17 @@
       var cmd = e.target.textContent;
       if (cmd === "Switch to Night Mode") {
         body.className = "night-mode";
+        mode = "night";
         e.target.textContent = "Switch to Day Mode";
-        body.dispatchEvent(new CustomEvent("mode", { "detail": "night" }));
       } else {
         body.className = "day-mode";
+        mode = "day";
         e.target.textContent = "Switch to Night Mode";
-        body.dispatchEvent(new CustomEvent("mode", { "detail": "day" }));
       }
+      charts.forEach(function (chart) {
+        chart.settings.mode = mode;
+        chart.drawChart();
+      });
     });
     appContainer.appendChild(modeSwitch);
 
@@ -121,7 +126,8 @@
         var chart = new Chart({
           title: "Followers (###)".replace("###", i + 1),
           data: data,
-          container: chartsContainer
+          container: chartsContainer,
+          mode: mode
         });
         return chart;
       });
