@@ -136,23 +136,15 @@
   };
 
   Chart.prototype.destroy = function () {
+    var self = this;
     this.addedListeners.forEach(function (item) {
       item.target.removeEventListener.apply(item.target, item.args);
     });
     this.chart.innerHTML = "";
     this.chart.parentNode.removeChild(this.chart);
-    delete this.addedListeners;
-    delete this.id;
-    delete this.chart;
-    delete this.view;
-    delete this.viewCtx;
-    delete this.overView;
-    delete this.overViewCtx;
-    delete this.preview;
-    delete this.previewCtx;
-    delete this.overPreview;
-    delete this.overPreviewCtx;
-    delete this.settings;
+    Object.getOwnPropertyNames(this).forEach(function (name) {
+      delete self[name];
+    });
   };
 
   Chart.prototype.addListener = function () {
