@@ -125,7 +125,8 @@
       x1: view.width,
       y1: 10,
       lineWidth: 3,
-      labels: 5
+      labels: 5,
+      fontSize: 14
     };
 
     this.drawChart();
@@ -334,15 +335,16 @@
 
     var ctx = this.view.getContext("2d");
     ctx.save();
-    ctx.font = "14px sans-serif";
+    ctx.font = viewSettings.fontSize + "px sans-serif";
     ctx.textBaseline = "bottom";
     ctx.strokeStyle = colors.yline;
     ctx.fillStyle = colors.label;
     ctx.lineWidth = 1;
-    var yStep = Math.round( (transform.maxY - transform.minY) / viewSettings.labels);
+    var yLabels = Math.round(view.height / (viewSettings.fontSize * 7));
+    var yStep = Math.round( (transform.maxY - transform.minY) / yLabels ) || 1;
     var exp = Math.floor(Math.log10(yStep));
     yStep = Math.round( yStep / Math.pow(10, exp) ) * Math.pow(10, exp) || 1;
-    var y = Math.round(transform.minY / yStep) * yStep;
+    var y = Math.ceil(transform.minY / yStep) * yStep;
     var i = 0, j = 0;
     while ( y < transform.maxY) {
       ctx.save();
@@ -365,7 +367,8 @@
     }
 
     ctx.textBaseline = "top";
-    var xStep = Math.floor( (transform.end - transform.begin) / viewSettings.labels ) || 1;
+    var xLabels = Math.round(view.width / (viewSettings.fontSize * 5 * 1.2));
+    var xStep = Math.round( (transform.end - transform.begin) / xLabels ) || 1;
     var x = transform.begin;
     while ( x < transform.end) {
       var value = xColumn[x];
@@ -524,6 +527,8 @@
       var prevBegin = self.settings.begin;
       var prevEnd = self.settings.end;
       var chartBeginX, chartEndX, chartBeginIndex, chartEndIndex;
+      var prevFrameBegin = previewFrame.x0;
+      var prevFrameEnd = previewFrame.x1;
 
       if (target === "begin") {
         if (Math.abs(previewFrame.x1 - previewFrame.x0 - deltaX) < threshold * 4) { return; }
@@ -575,6 +580,8 @@
       }
       if (self.settings.begin !== prevBegin || self.settings.end !== prevEnd) {
         self.drawChart();
+      } else if (prevFrameBegin !== previewFrame.x0 || prevFrameEnd !== previewFrame.x1) {
+        self.drawPreviewControl();
       }
     }
   };

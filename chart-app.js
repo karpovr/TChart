@@ -88,7 +88,7 @@
     function loadData (file) {
       var xhr = new XMLHttpRequest();
       xhr.onload = function () {
-        charts = drawChart(JSON.parse(this.responseText));
+        drawChart(JSON.parse(this.responseText));
       };
       xhr.open("get", file, true);
       xhr.send();
@@ -117,7 +117,7 @@
     function drawChart(data) {
       clearCharts();
       var chartsContainer = document.getElementById("charts-container");
-      return data.map(function (data, i) {
+      charts = data.map(function (data, i) {
         var chart = new Chart({
           title: "Followers (###)".replace("###", i + 1),
           data: data,
