@@ -62,15 +62,12 @@
     graph.className = "chart-graph";
     chart.appendChild(graph);
 
-    var dpr = window.devicePixelRatio;
-
     var view = document.createElement("canvas");
     view.className = "view";
-    view.width = settings.width * dpr;
-    view.height = Math.round(settings.height / 10 * 8) * dpr;
-    graph.appendChild(view);
+    view.width = settings.width;
+    view.height = Math.round(settings.height / 10 * 8);
     var viewCtx = view.getContext("2d");
-    viewCtx.scale(dpr, dpr);
+    graph.appendChild(view);
 
     var overView = document.createElement("canvas");
     overView.className = "view-overlay";
@@ -78,16 +75,14 @@
     overView.height = view.height;
     graph.appendChild(overView);
     var overViewCtx = overView.getContext("2d");
-    overViewCtx.scale(dpr, dpr);
 
     var preview = document.createElement("canvas");
-    preview.width = settings.width * dpr;
-    preview.height = Math.round(settings.height / 10) * dpr;
+    preview.width = settings.width;
+    preview.height = Math.round(settings.height / 10);
     preview.className = "preview";
     preview.style.top = view.height + "px";
     graph.appendChild(preview);
     var previewCtx = preview.getContext("2d");
-    previewCtx.scale(dpr, dpr);
 
     var overPreview = document.createElement("canvas");
     overPreview.className = "preview-overlay";
@@ -96,7 +91,6 @@
     overPreview.style.top = preview.style.top;
     graph.appendChild(overPreview);
     var overPreviewCtx = overPreview.getContext("2d");
-    overPreviewCtx.scale(dpr, dpr);
 
     this.id = Date.now();
     this.chart = chart;
