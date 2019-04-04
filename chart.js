@@ -304,6 +304,7 @@
         ctx.lineTo(x, y);
       }
       ctx.restore();
+      ctx.lineJoin = "round";
       ctx.stroke();
     }
     ctx.restore();
